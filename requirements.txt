@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+typing-extensions
+huggingface-hub
+openai
+python-multipart

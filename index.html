@@ -1,0 +1,742 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Data Visualization Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --secondary: #3f37c9;
+      --accent: #4895ef;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --success: #4cc9f0;
+      --danger: #f72585;
+      --warning: #f8961e;
+      --info: #7209b7;
+      --border-radius: 8px;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f5f7fa;
+      color: var(--dark);
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #tabs {
+      display: flex;
+      margin-bottom: 20px;
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 10px;
+      box-shadow: var(--shadow);
+      justify-content: center;
+      width: 100%;
+    }
+
+    #tabs button {
+      padding: 12px 24px;
+      margin: 0 8px;
+      border: none;
+      background: transparent;
+      font-weight: 500;
+      color: var(--dark);
+      cursor: pointer;
+      border-radius: var(--border-radius);
+      transition: var(--transition);
+    }
+
+    #tabs button:hover {
+      background: rgba(67, 97, 238, 0.1);
+    }
+
+    #tabs button.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+      background: white;
+      border-radius: var(--border-radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-top: 20px;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    h2 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
+
+    input, select, button {
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: var(--border-radius);
+      font-family: inherit;
+      font-size: 14px;
+      transition: var(--transition);
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+    }
+
+    #question {
+      flex: 1;
+      min-width: 300px;
+      max-width: 500px;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover {
+      background-color: var(--secondary);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #dropZone {
+      position: relative;
+      border: 2px dashed #ccc;
+      padding: 20px;
+      overflow: hidden;
+      background: white;
+      border-radius: var(--border-radius);
+      min-height: 500px;
+      margin: 20px auto 0;
+      box-shadow: var(--shadow);
+      width: 794px;
+      height: 1123px;
+    }
+
+    .chart-wrapper {
+      margin: 10px;
+      padding: 15px;
+      border: 1px solid #e9ecef;
+      background: white;
+      border-radius: var(--border-radius);
+      position: absolute;
+      overflow: auto;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--danger);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .resize-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--primary);
+      right: 0;
+      bottom: 0;
+      cursor: se-resize;
+      border-radius: 2px 0 var(--border-radius) 0;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover .resize-handle {
+      opacity: 1;
+    }
+
+    .font-size-selector {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover .font-size-selector {
+      opacity: 1;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Courier New', monospace;
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    input[type="number"] {
+      width: 80px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background-color: #5a6268;
+    }
+
+    #response {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: var(--border-radius);
+      margin: 20px auto 0;
+      font-family: 'Courier New', monospace;
+      max-width: 800px;
+      text-align: left;
+    }
+
+    @media (max-width: 900px) {
+      #dropZone {
+        width: 100%;
+        height: auto;
+        min-height: 500px;
+      }
+      
+      form {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      #question {
+        min-width: auto;
+        width: 100%;
+        max-width: 100%;
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .tab-content {
+        padding: 15px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      #tabs {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      #tabs button {
+        margin: 5px 0;
+        width: 100%;
+      }
+      
+      .btn-group {
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .btn-group button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="tabs">
+      <button onclick="showTab('query')" class="active">Query</button>
+      <button onclick="showTab('canvas')">Canvas</button>
+    </div>
+
+    <!-- Query Tab -->
+    <div id="query" class="tab-content" style="display: block;">
+      <h2>Ask a Question</h2>
+      <form onsubmit="submitQuery(event)">
+        <input type="text" id="question" placeholder="Enter your data question..." required />
+        <select id="format">
+          <option value="bar graph">Bar Graph</option>
+          <option value="pie chart">Pie Chart</option>
+          <option value="line graph">Line Graph</option>
+          <option value="full ai report">Full AI Report</option>
+        </select>
+        <button type="submit">Generate</button>
+      </form>
+      <pre id="response"></pre>
+      <div id="chartContainer"></div>
+    </div>
+
+    <!-- Canvas Tab -->
+    <div id="canvas" class="tab-content">
+      <h2>Dashboard Canvas</h2>
+      <div class="controls">
+        <div class="control-group">
+          <label for="canvasSize">Canvas Size:</label>
+          <select id="canvasSize" onchange="changeCanvasSize()">
+            <option value="A4">A4 (794 x 1123)</option>
+            <option value="A3">A3 (1123 x 1587)</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input type="number" id="customWidth" placeholder="Width" style="display:none;" />
+          <input type="number" id="customHeight" placeholder="Height" style="display:none;" />
+          <button onclick="applyCustomSize()">Apply</button>
+        </div>
+        
+        <div class="btn-group">
+          <button onclick="resetCanvas()">Reset Canvas</button>
+          <button onclick="addTextBox()">Add Text Box</button>
+          <button onclick="exportCanvasAsPDF()" style="background-color: var(--success);">Export as PDF</button>
+        </div>
+      </div>
+      
+      <div id="dropZone"></div>
+    </div>
+  </div>
+
+
+  <script>
+    const STORAGE_KEY = "dashboardElements";
+    let savedElements = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+    function showTab(id) {
+      document.querySelectorAll(".tab-content").forEach(div => div.style.display = "none");
+      document.getElementById(id).style.display = "block";
+      if (id === "canvas") loadCanvasElements();
+    }
+
+    async function submitQuery(event) {
+      event.preventDefault();
+      const question = document.getElementById("question").value;
+      const format = document.getElementById("format").value;
+      const responseBox = document.getElementById("response");
+      const chartContainer = document.getElementById("chartContainer");
+      chartContainer.innerHTML = "";
+      responseBox.textContent = "Sending...";
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, format })
+        });
+
+        const data = await res.json();
+        responseBox.textContent = "";
+
+        if (data.type === "chart" && format !== "full ai report") {
+          const element = {
+            type: "chart",
+            content: data.data,
+            positionable: true,
+            x: 50,
+            y: 50,
+            width: 400,
+            height: 300
+          };
+          savedElements.push(element);
+        } else {
+          const analysis = data.analysis || JSON.stringify(data, null, 2);
+          const element = {
+            type: "report",
+            content: analysis,
+            positionable: true,
+            x: 50,
+            y: 50,
+            width: 400,
+            height: 200,
+            fontSize: 14
+          };
+          savedElements.push(element);
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      } catch (err) {
+        responseBox.textContent = "Fetch error: " + err.message;
+      }
+    }
+
+    function getChartConfig(data) {
+      const type = data.chart_type.includes("line") ? "line" :
+                  data.chart_type.includes("pie") ? "pie" : "bar";
+
+      return {
+        type: type,
+        data: {
+          labels: data.labels || data.x_axis?.values,
+          datasets: [{
+            label: data.title || data.y_axis?.label || "Dataset",
+            data: data.values || data.y_axis?.values,
+            backgroundColor: ["#3498db", "#2ecc71", "#f1c40f", "#e74c3c"]
+          }]
+        },
+        options: {
+          responsive: false, // UPDATED
+          maintainAspectRatio: false, // UPDATED
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: data.title }
+          }
+        }
+      };
+    }
+
+    function loadCanvasElements() {
+      const dropZone = document.getElementById("dropZone");
+      dropZone.innerHTML = "";
+
+      savedElements.forEach((el, index) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "chart-wrapper";
+        wrapper.style.left = el.x + "px";
+        wrapper.style.top = el.y + "px";
+        wrapper.style.width = el.width + "px";
+        wrapper.style.height = el.height + "px";
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "delete-btn";
+        delBtn.textContent = "×";
+        delBtn.title = "Delete element";
+        delBtn.onclick = () => {
+          savedElements.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          loadCanvasElements();
+        };
+        wrapper.appendChild(delBtn);
+
+        const resizeHandle = document.createElement("div");
+        resizeHandle.className = "resize-handle";
+        wrapper.appendChild(resizeHandle);
+
+        if (el.type === "chart") {
+          const canvas = document.createElement("canvas");
+          canvas.width = el.width; // UPDATED
+          canvas.height = el.height; // UPDATED
+          wrapper.appendChild(canvas);
+          const config = getChartConfig(el.content);
+          canvas._chartInstance = new Chart(canvas, config); // UPDATED
+        } else if (el.type === "report") {
+          const pre = document.createElement("pre");
+          pre.textContent = el.content;
+          pre.style.whiteSpace = "pre-wrap";
+          pre.style.wordWrap = "break-word";
+          pre.style.overflowX = "auto";
+          pre.style.fontSize = (el.fontSize || 14) + "px";
+          pre.style.fontFamily = "monospace";
+          wrapper.appendChild(pre);
+
+          const fontSelector = document.createElement("select");
+          fontSelector.className = "font-size-selector";
+          [12, 14, 16, 18, 20, 24].forEach(size => {
+            const opt = document.createElement("option");
+            opt.value = size;
+            opt.textContent = size + "px";
+            if (size === el.fontSize) opt.selected = true;
+            fontSelector.appendChild(opt);
+          });
+          fontSelector.onchange = () => {
+            pre.style.fontSize = fontSelector.value + "px";
+            el.fontSize = parseInt(fontSelector.value, 10);
+            const newHeight = pre.scrollHeight + 20;
+            wrapper.style.height = newHeight + "px";
+            el.height = newHeight;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          };
+          wrapper.appendChild(fontSelector);
+
+          setTimeout(() => {
+            const newHeight = pre.scrollHeight + 20;
+            wrapper.style.height = newHeight + "px";
+            savedElements[index].height = newHeight;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          }, 100);
+        } else if (el.type === "text") {
+          const editable = document.createElement("div");
+          editable.contentEditable = true;
+          editable.textContent = el.content;
+          editable.style.width = "100%";
+          editable.style.height = "100%";
+          editable.style.fontSize = (el.fontSize || 16) + "px";
+          editable.style.outline = "none";
+          editable.style.cursor = "text";
+          editable.style.fontFamily = "Arial, sans-serif";
+          editable.style.padding = "4px";
+          editable.style.boxSizing = "border-box";
+          editable.style.background = "white";
+          editable.style.borderRadius = "4px";
+
+          editable.oninput = () => {
+            el.content = editable.textContent;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          };
+
+          wrapper.appendChild(editable);
+
+          const fontSelector = document.createElement("select");
+          fontSelector.className = "font-size-selector";
+          [12, 14, 16, 18, 20, 24, 28].forEach(size => {
+            const opt = document.createElement("option");
+            opt.value = size;
+            opt.textContent = size + "px";
+            if (size === el.fontSize) opt.selected = true;
+            fontSelector.appendChild(opt);
+          });
+          fontSelector.onchange = () => {
+            editable.style.fontSize = fontSelector.value + "px";
+            el.fontSize = parseInt(fontSelector.value, 10);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          };
+          wrapper.appendChild(fontSelector);
+        }
+
+        dropZone.appendChild(wrapper);
+
+        interact(wrapper)
+          .draggable({
+            listeners: {
+              move(event) {
+                el.x += event.dx;
+                el.y += event.dy;
+                wrapper.style.left = el.x + "px";
+                wrapper.style.top = el.y + "px";
+              },
+              end() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+              }
+            }
+          })
+          .resizable({
+            edges: { left: false, right: true, bottom: true, top: false },
+            listeners: {
+              move(event) {
+                el.width = Math.max(event.rect.width, 50);
+                el.height = Math.max(event.rect.height, 50);
+
+                wrapper.style.width = el.width + "px";
+                wrapper.style.height = el.height + "px";
+
+                if (el.type === "chart") {
+                  const canvas = wrapper.querySelector("canvas");
+
+                  // Destroy existing chart before re-creating — UPDATED
+                  if (canvas._chartInstance) {
+                    canvas._chartInstance.destroy();
+                  }
+
+                  canvas.width = el.width;
+                  canvas.height = el.height;
+                  const config = getChartConfig(el.content);
+                  canvas._chartInstance = new Chart(canvas, config); // UPDATED
+                }
+              },
+              end() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+              }
+            }
+          });
+      });
+    }
+
+    function resetCanvas() {
+      if (confirm("Clear all canvas elements?")) {
+        savedElements = [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+        loadCanvasElements();
+      }
+    }
+
+    function changeCanvasSize() {
+      const select = document.getElementById("canvasSize");
+      const dropZone = document.getElementById("dropZone");
+      const customWidth = document.getElementById("customWidth");
+      const customHeight = document.getElementById("customHeight");
+
+      if (select.value === "A4") {
+        dropZone.style.width = "794px";
+        dropZone.style.height = "1123px";
+        customWidth.style.display = "none";
+        customHeight.style.display = "none";
+      } else if (select.value === "A3") {
+        dropZone.style.width = "1123px";
+        dropZone.style.height = "1587px";
+        customWidth.style.display = "none";
+        customHeight.style.display = "none";
+      } else {
+        customWidth.style.display = "inline-block";
+        customHeight.style.display = "inline-block";
+      }
+    }
+
+    function applyCustomSize() {
+      const customWidth = document.getElementById("customWidth").value;
+      const customHeight = document.getElementById("customHeight").value;
+      const dropZone = document.getElementById("dropZone");
+
+      if (!customWidth || !customHeight) {
+        alert("Please enter valid custom width and height.");
+        return;
+      }
+      dropZone.style.width = customWidth + "px";
+      dropZone.style.height = customHeight + "px";
+    }
+
+    function addTextBox() {
+      const newElement = {
+        type: "text",
+        content: "Click to edit text...",
+        positionable: true,
+        x: 50,
+        y: 50,
+        width: 200,
+        height: 100,
+        fontSize: 16
+      };
+      savedElements.push(newElement);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      loadCanvasElements();
+    }
+
+    if (document.getElementById("canvas").style.display === "block") {
+      loadCanvasElements();
+    }
+    async function exportCanvasAsPDF() {
+      const dropZone = document.getElementById("dropZone");
+
+      // Temporarily hide delete buttons and font selectors
+      const deleteButtons = dropZone.querySelectorAll(".delete-btn");
+      const fontSelectors = dropZone.querySelectorAll("select");
+
+      deleteButtons.forEach(btn => btn.style.display = "none");
+      fontSelectors.forEach(sel => sel.style.display = "none");
+
+      // Temporarily remove scrollbars
+      const originalOverflow = dropZone.style.overflow;
+      dropZone.style.overflow = "visible";
+
+      await html2canvas(dropZone, { scale: 2 }).then(canvas => {
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jspdf.jsPDF("p", "pt", [dropZone.offsetWidth, dropZone.offsetHeight]);
+        pdf.addImage(imgData, "PNG", 0, 0, dropZone.offsetWidth, dropZone.offsetHeight);
+        pdf.save("dashboard_canvas.pdf");
+      });
+
+      // Restore
+      deleteButtons.forEach(btn => btn.style.display = "block");
+      fontSelectors.forEach(sel => sel.style.display = "inline-block");
+      dropZone.style.overflow = originalOverflow;
+
+    }
+
+
+  </script>
+</body>
+</html>
