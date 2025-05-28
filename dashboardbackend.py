@@ -1,27 +1,171 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Union
+from fastapi import FastAPI, Request, Form, HTTPException, status
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from passlib.context import CryptContext
+from datetime import datetime, timedelta
+import secrets
 import sqlite3
-from huggingface_hub import InferenceClient
-from fastapi.middleware.cors import CORSMiddleware
-import json
+from database import sqlite_connection
 from openai import OpenAI
-client = OpenAI(api_key="sk-aa05f2ae9f8c46cda0e9d5c16fdaed0c", base_url="https://api.deepseek.com")
+import json 
+from pydantic import BaseModel
+from fastapi import Depends
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
-
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For testing, allow all origins
+    allow_origins=["*"],  # Replace "*" with specific URLs to limit access
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 
+templates = Jinja2Templates(directory="templates")
+
+# Security config
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SESSION_EXPIRE_MINUTES = 30
+
+# Password hashing
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+# Session management
+def create_session_token():
+    return secrets.token_urlsafe(32)
+
+def create_session(user_id: int):
+    session_token = create_session_token()
+    expires_at = datetime.now() + timedelta(minutes=SESSION_EXPIRE_MINUTES)
+    
+    with sqlite_connection() as conn:
+        # Remove any existing sessions for this user
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        # Create new session
+        conn.execute(
+            "INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?)",
+            (session_token, user_id, expires_at.isoformat())
+        )
+        conn.commit()
+    return session_token
+
+def get_user_from_session(session_token: str):
+    if not session_token:
+        return None
+    
+    with sqlite_connection() as conn:
+        # Get valid session with user data
+        session = conn.execute(
+            "SELECT users.id, users.username FROM sessions "
+            "JOIN users ON users.id = sessions.user_id "
+            "WHERE session_id = ? AND expires_at > datetime('now')",
+            (session_token,)
+        ).fetchone()
+        
+        return dict(session) if session else None
+
+# Authentication dependencies
+def get_current_user(request: Request):
+    session_token = request.cookies.get("session_token")
+    return get_user_from_session(session_token) if session_token else None
+
+def login_required(user: dict = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+            headers={"Location": "/login"},
+        )
+    return user
+
+# Routes
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request, user: dict = Depends(login_required)):
+    # Verify session again to ensure it's valid
+    session_token = request.cookies.get("session_token")
+    if not session_token or not get_user_from_session(session_token):
+        response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+        response.delete_cookie("session_token")
+        return response
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "username": user["username"]
+    })
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    with sqlite_connection() as conn:
+        user = conn.execute(
+            "SELECT id, username, password_hash FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+    
+    if not user or not verify_password(password, user["password_hash"]):
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Invalid username or password"
+        })
+    
+    session_token = create_session(user["id"])
+    
+    response = RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        max_age=SESSION_EXPIRE_MINUTES * 60,
+        samesite="Lax",
+        path="/",  # Important: set cookie path to root
+        secure=False  # Set to True in production with HTTPS
+    )
+    return response
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        with sqlite_connection() as conn:
+            conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_token,))
+            conn.commit()
+    
+    response = RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
+    response.delete_cookie("session_token")
+    return response
+
+@app.get("/signup", response_class=HTMLResponse)
+async def signup_form(request: Request):
+    return templates.TemplateResponse("signup.html", {"request": request})
+
+@app.post("/signup")
+async def signup(request: Request, username: str = Form(...), password: str = Form(...)):
+    hashed_password = get_password_hash(password)
+    
+    try:
+        with sqlite_connection() as conn:
+            conn.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (username, hashed_password)
+            )
+            conn.commit()
+    except sqlite3.IntegrityError:
+        return templates.TemplateResponse("signup.html", {
+            "request": request,
+            "error": "Username already exists"
+        })
+    
+    return RedirectResponse("/login", status_code=status.HTTP_302_FOUND)
 
 #client = InferenceClient(api_key="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")
-
+client = OpenAI(api_key="sk-aa05f2ae9f8c46cda0e9d5c16fdaed0c", base_url="https://api.deepseek.com")
 # Chart templates
 pie_json = '''"chart_type": "pie", "title": "عنوان نمودار", "labels": ["برچسب1", "برچسب2"], "values": [10, 20]'''
 bar_line_json = '''"chart_type": "bar", "title": "عنوان نمودار", "x_axis": {"label": "برچسب محور x", "values": ["X1", "X2"]}, "y_axis": {"label": "برچسب محور y", "values": [100, 200]}'''
