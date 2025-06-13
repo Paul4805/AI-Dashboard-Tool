@@ -162,7 +162,7 @@ async def landing_page(request: Request):
         return RedirectResponse("/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     else:
         # Show public landing page or redirect to login
-        return templates.TemplateResponse("login.html", {"request": request})
+        return RedirectResponse("/login", status_code=302)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
