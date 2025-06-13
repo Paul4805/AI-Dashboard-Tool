@@ -1267,7 +1267,7 @@
         console.log("Sending query with connection:", window.selectedDatabaseConnection);
         console.log("Question:", question, "Format:", format);
         
-        const res = await fetch("http://localhost:8000/ask", {
+        const res = await fetch("https://05znwjn3jo3e2x-8000.proxy.runpod.net/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -2206,7 +2206,7 @@
         console.log('Loading databases with connection:', connectionDetails);
         
         // Use the full URL with port number for more reliable connection
-          const apiBaseUrl = 'http://localhost:8000/api';
+          const apiBaseUrl = 'https://05znwjn3jo3e2x-8000.proxy.runpod.net/api';
           
           // Use the connection details to fetch databases
           const response = await fetch(`${apiBaseUrl}/databases`, {
@@ -2897,7 +2897,7 @@
           databaseListContainer.innerHTML = '';
           databaseListContainer.appendChild(changeConnItem);
 
-          const response = await fetch('http://localhost:8000/api/databases', {
+          const response = await fetch('https://05znwjn3jo3e2x-8000.proxy.runpod.net/api/databases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(currentConnection)
