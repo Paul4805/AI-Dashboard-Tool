@@ -23,6 +23,7 @@ import psycopg2
 import psycopg2.extras
 from fastapi import Request
 import mysql.connector as mysql
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -53,8 +54,6 @@ from database import (
 )
 
 templates = Jinja2Templates(directory="templates")
-
-# Security config
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SESSION_EXPIRE_MINUTES = 30
 
@@ -100,7 +99,6 @@ def get_user_from_session(session_token: str):
             return {"id": session[0], "username": session[1]}
         else:
             return None
-
 
 # Authentication dependencies
 def get_current_user(request: Request):
@@ -153,6 +151,7 @@ async def data_page(request: Request, user: dict = Depends(login_required)):
         "request": request,
         "username": user["username"]
     })
+
 @app.get("/", response_class=HTMLResponse)
 async def landing_page(request: Request):
     session_token = request.cookies.get("session_token")
@@ -425,34 +424,83 @@ def get_schema_description_english():
     conn.close()
     return schema_description
 
+
+import re
+
+def clean_sql(raw_sql: str, as_single_line: bool = False) -> str:
+    """
+    Cleans an LLM-generated SQL string by removing markdown, explanations, and formatting.
+
+    Args:
+        raw_sql (str): Raw output from LLM containing SQL and possibly descriptions.
+        as_single_line (bool): Whether to return the query in one line.
+
+    Returns:
+        str: Cleaned SQL query.
+    """
+    # Remove markdown
+    cleaned = raw_sql.replace("```sql", "").replace("```", "").strip()
+
+    # Split into lines and find where actual SQL starts (e.g., SELECT, WITH, INSERT, etc.)
+    lines = cleaned.splitlines()
+    sql_start_keywords = ("SELECT", "WITH", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP")
+    
+    for i, line in enumerate(lines):
+        if line.strip().upper().startswith(sql_start_keywords):
+            sql_lines = lines[i:]
+            break
+    else:
+        sql_lines = lines  # fallback if no keyword found
+
+    cleaned_sql = "\n".join(sql_lines).strip()
+
+    if as_single_line:
+        cleaned_sql = " ".join(cleaned_sql.split())
+
+    return cleaned_sql
+
+
 def generate_sql_english(user_prompt, schema_description):
     """
-    Converts English questions to SQL queries using Llama 3.1 8B on RunPod
+    Converts natural language questions to raw SQL queries using LLM via RunPod.
     
     Args:
-        user_prompt: English question to convert to SQL
-        schema_description: Description of database tables/columns
-        
+        user_prompt (str): User's question in plain English.
+        schema_description (str): Database table/column schema.
+
     Returns:
-        str: Generated SQL query
+        str: Cleaned raw SQL query string (no explanation, no formatting).
     """
-    # Construct the prompt for the LLM
-    prompt = f"""You are an expert SQL developer. Convert this question to a precise SQL query.
-Use the following table schema:
+    # Construct a strict prompt
+    prompt = f"""You are an AI that outputs only SQL queries.
+
+Given the following database schema:
 {schema_description}
-Return ONLY the SQL query, nothing else, this is very crucial, return only the query nothing else.
-Question: {user_prompt}"""
-    
-    # Call the RunPod API
+
+Translate the following question into a syntactically correct SQL query.
+IMPORTANT: Return ONLY the SQL query. Do NOT include comments, explanations, markdown, any formatting or the msg "Here's the SQL query to retrieve......" .
+
+Question:
+{user_prompt}
+"""
+
+    # Call the model (DeepSeek/Llama etc.)
     sqlquery = client.chat.completions.create(
         model="deepseek-chat",
-        messages=[{
-            "role": "user",
-            "content": f"""{prompt}
-"""
-        }]
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
     )
-    return sqlquery.choices[0].message.content.strip().replace("```sql", "").replace("```", "").strip()
+
+    # Extract only SQL from response
+    #if sqlsquery startswith("Here's the SQL query to retrieve") remove content till /n
+    sqlquery= clean_sql(sqlquery.choices[0].message.content.strip())
+    return sqlquery
+    #return sqlquery.choices[0].message.content.strip().removeprefix("```sql").removesuffix("```").strip()
+
 
 def generate_analysis(user_prompt, results):
     """
@@ -547,6 +595,7 @@ def generate(user_query: UserQuery):
     print(f"User Query: {user_query.question}, Format: {user_query.format}")  # Debugging output
     try:
         sql = generate_sql_english(user_query.question, schema)
+        #if sql.startswith(""):
         conn = sqlite3.connect("example_english.db")
         cursor = conn.cursor()
         cursor.execute(sql)
