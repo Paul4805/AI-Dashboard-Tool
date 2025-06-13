@@ -1051,15 +1051,6 @@
           <button type="button" id="voiceButton" onclick="recordVoice()" class="btn-secondary">
             <i class="fas fa-microphone"></i>
           </button>
-          <div class="input-group">
-            <select id="format" required>
-              <option value="" disabled selected>Select a format</option>
-              <option value="bar graph">Bar Graph</option>
-              <option value="pie chart">Pie Chart</option>
-              <option value="line graph">Line Graph</option>
-              <option value="full ai report">Full AI Report</option>
-            </select>
-          </div>
           <div id="databaseDropdown" class="dropdown-content" style="display:none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; width: 200px;">
             <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid #ccc;">
               <span>Select Database</span>
@@ -1249,138 +1240,97 @@
       event.preventDefault();
 
       const question = document.getElementById("question").value;
-      const format = document.getElementById("format").value;
       const responseBox = document.getElementById("response");
       const chartContainer = document.getElementById("chartContainer");
-      
+
       // Clear previous results
       chartContainer.innerHTML = "";
       responseBox.innerHTML = "<p>Processing your request...</p>";
 
       try {
-        // Check if we have a selected database connection
+        // Ensure a database connection is selected
         if (!window.selectedDatabaseConnection) {
           responseBox.innerHTML = "<p class='error'>Error: No database connection selected</p>";
           return;
         }
 
-        console.log("Sending query with connection:", window.selectedDatabaseConnection);
-        console.log("Question:", question, "Format:", format);
-        
-        const res = await fetch("https://05znwjn3jo3e2x-8000.proxy.runpod.net/ask", {
+        const res = await fetch("http://localhost:8000/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            question, 
-            format, 
-            connection: window.selectedDatabaseConnection 
+          body: JSON.stringify({
+            question,
+            connection: window.selectedDatabaseConnection
           })
         });
 
-        if (!res.ok) {
-          throw new Error(`Server responded with status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Server responded with status: ${res.status}`);
 
         const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        // Debug response
         console.log("Server response:", data);
-        
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        // Display the raw response for debugging
         responseBox.innerHTML = `<p><strong>Response received:</strong> Check console for details</p>`;
-        
-        // Now try to create a chart with the actual data
+
         if (data.type === "chart" && data.data) {
           let chartData = data.data;
-          
-          // Check if we need to parse the raw_data field
+
+          // Attempt to parse raw_data (if it's markdown-embedded JSON)
           if (chartData.raw_data) {
             try {
-              // Extract JSON from markdown code block if present
               const jsonMatch = chartData.raw_data.match(/```json\s*([\s\S]*?)\s*```/);
               const jsonString = jsonMatch ? jsonMatch[1] : chartData.raw_data;
-              
-              // Parse the JSON string
-              const parsedData = JSON.parse(jsonString);
-              console.log("Successfully parsed chart data:", parsedData);
-              
-              // Use the parsed data instead
-              chartData = parsedData;
-            } catch (parseError) {
-              console.error("Error parsing raw_data:", parseError);
+              chartData = JSON.parse(jsonString);
+              console.log("Parsed chart data:", chartData);
+            } catch (err) {
+              console.error("Failed to parse raw_data:", err);
             }
           }
-          
-          // Determine the chart type
-          let chartType = chartData.chart_type || format || 'bar';
-          
-          // Normalize chart type
-          if (chartType.includes('bar')) {
-            chartType = 'bar';
-          } else if (chartType.includes('line')) {
-            chartType = 'line';
-          } else if (chartType.includes('pie')) {
-            chartType = 'pie';
-          }
-          
+
+          // Detect chart type from backend result
+          let chartType = chartData.chart_type || 'bar';
+          chartType = chartType.toLowerCase();
+          if (chartType.includes('bar')) chartType = 'bar';
+          else if (chartType.includes('line')) chartType = 'line';
+          else if (chartType.includes('pie')) chartType = 'pie';
+          else if (chartType.includes('scatter')) chartType = 'scatter';
+
           console.log("Using chart type:", chartType);
 
-          // Normalize chartData for bar and line charts to have labels and values keys
-          if (chartType === 'bar' || chartType === 'line') {
-            if (chartData.x_axis && chartData.x_axis.values && chartData.y_axis && chartData.y_axis.values) {
+          // Normalize data
+          if (['bar', 'line'].includes(chartType)) {
+            if (chartData.x_axis && chartData.y_axis) {
               chartData.labels = chartData.x_axis.values;
               chartData.values = chartData.y_axis.values;
-            } else if (chartData.labels && chartData.values) {
-              // labels and values already present, do nothing
             } else if (Array.isArray(chartData) && chartData.length > 0) {
-              // If chartData is an array of objects, extract labels and values
               chartData.labels = Object.keys(chartData[0]);
               chartData.values = chartData.map(item => Object.values(item)[0]);
             } else {
-              // Fallback to empty arrays
               chartData.labels = chartData.labels || [];
               chartData.values = chartData.values || [];
             }
           }
-          
-          // For bar charts, use our special function
+
+          // Render chart
           if (chartType === 'bar') {
             try {
-              // Create preview chart
               const previewChart = createBarChart(chartContainer, chartData);
               responseBox.innerHTML += `<p>Bar chart created successfully!</p>`;
-              
-              // Add to dashboard
               addBarChartToCanvas(chartData);
             } catch (err) {
-              console.error("Error creating bar chart:", err);
+              console.error("Bar chart error:", err);
               responseBox.innerHTML += `<p class='error'>Bar Chart Error: ${err.message}</p>`;
             }
           } else {
-            // For other chart types, use the existing code
-            // Create a preview chart in the chart container
+            // Create canvas
             const previewCanvas = document.createElement("canvas");
             chartContainer.appendChild(previewCanvas);
-            
-            // Fix for line chart background and border colors to be arrays for multiple points
-            let backgroundColor, borderColor;
-            if (chartType === 'line') {
-              backgroundColor = 'rgba(54, 162, 235, 0.5)';
-              borderColor = 'rgba(54, 162, 235, 1)';
-            } else {
-              backgroundColor = [
-                'rgba(255, 99, 132, 0.7)',
-                'rgba(54, 162, 235, 0.7)',
-                'rgba(255, 206, 86, 0.7)',
-                'rgba(75, 192, 192, 0.7)',
-                'rgba(153, 102, 255, 0.7)',
-                'rgba(255, 159, 64, 0.7)'
-              ];
-              borderColor = undefined;
-            }
-            
+
+            const isLine = chartType === 'line';
+            const backgroundColor = isLine
+              ? 'rgba(54, 162, 235, 0.5)'
+              : ['rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)', 'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)'];
+
             const config = {
               type: chartType,
               data: {
@@ -1388,11 +1338,11 @@
                 datasets: [{
                   label: chartData.title || "Data",
                   data: chartData.values || [],
-                  backgroundColor: backgroundColor,
-                  borderColor: borderColor,
+                  backgroundColor,
+                  borderColor: isLine ? 'rgba(54, 162, 235, 1)' : undefined,
                   borderWidth: 1,
-                  fill: chartType === 'line' ? false : undefined,
-                  tension: chartType === 'line' ? 0.4 : 0 // smooth curves for line chart
+                  fill: !isLine,
+                  tension: isLine ? 0.4 : 0
                 }]
               },
               options: {
@@ -1404,56 +1354,45 @@
                     text: chartData.title || question
                   }
                 },
-                scales: chartType === 'line' ? {
+                scales: isLine ? {
                   x: {
-                    beginAtZero: false,
-                    ticks: {
-                      color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333333'
-                    },
-                    grid: {
-                      color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                    }
+                    ticks: { color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333' },
+                    grid: { color: document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
                   },
                   y: {
                     beginAtZero: true,
-                    ticks: {
-                      color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333333'
-                    },
-                    grid: {
-                      color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                    }
+                    ticks: { color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333' },
+                    grid: { color: document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
                   }
                 } : {}
               }
             };
-            
+
             try {
-              // Create the chart in the preview area
               new Chart(previewCanvas, config);
               responseBox.innerHTML += `<p>Chart created successfully! Type: ${chartType}</p>`;
-              
-              // Add to dashboard canvas directly
               addChartToCanvas(chartData, config);
             } catch (chartError) {
-              console.error("Error creating chart:", chartError);
+              console.error("Chart error:", chartError);
               responseBox.innerHTML += `<p class='error'>Chart Error: ${chartError.message}</p>`;
             }
           }
+
         } else if (data.type === "report" && data.analysis) {
-          // Handle report data
+          // Render text analysis
           const reportContent = data.analysis || "No analysis provided";
           responseBox.innerHTML += `<div class="report-preview"><h3>Report Preview:</h3>${reportContent}</div>`;
-          
-          // Add report to canvas
           addReportToCanvas(reportContent);
         } else {
           responseBox.innerHTML = `<p class='error'>Unexpected response format: ${JSON.stringify(data)}</p>`;
         }
+
       } catch (err) {
         responseBox.innerHTML = `<p class='error'>Error: ${err.message}</p>`;
         console.error("Query error:", err);
       }
     }
+
 
     // Get chart configuration
     function getChartConfig(data) {

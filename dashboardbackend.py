@@ -388,7 +388,6 @@ bar_line_json = '''"chart_type": "bar", "title": "Chart Title", "x_axis": {"labe
 # Input model
 class UserQuery(BaseModel):
     question: str
-    format: str  # e.g., "bar graph", "pie chart", "line graph", "full ai report"
 
 
 # Get database schema
@@ -502,6 +501,36 @@ Question:
     #return sqlquery.choices[0].message.content.strip().removeprefix("```sql").removesuffix("```").strip()
 
 
+
+def detect_chart_type(prompt: str) -> str:
+    """
+    Detects a chart or analysis type from the user prompt.
+
+    Returns:
+        A human-readable label like "Bar Graph", "Pie Chart", "AI Report"
+
+    Raises:
+        ValueError if no match or multiple matches are found.
+    """
+
+    chart_patterns = {
+        "Bar Graph": r"\bbar[\s-]?(graph|chart)\b",
+        "Line Graph": r"\bline[\s-]?(graph|chart)\b",
+        "Pie Chart": r"\bpie[\s-]?chart\b",
+        "Scatter Plot": r"\bscatter[\s-]?plot\b",
+        "AI Report": r"\b(ai[\s-]?analysis|machine learning|ai[\s-]?insight|intelligent summary)\b"
+    }
+
+    matches = [label for label, pattern in chart_patterns.items()
+               if re.search(pattern, prompt, re.IGNORECASE)]
+
+    if len(matches) == 0:
+        raise ValueError("No known chart or analysis type found in the prompt.")
+    elif len(matches) > 1:
+        raise ValueError(f"Multiple chart types detected: {', '.join(matches)}. Please specify only one.")
+
+    return matches[0]
+
 def generate_analysis(user_prompt, results):
     """
     Generates detailed data analysis from query results using Llama 3 on RunPod
@@ -592,7 +621,8 @@ please use chart labels in the language of the userprompt"""
 def generate(user_query: UserQuery):
     schema = get_schema_description_english()
     print(f"Schema for English: {schema}")  # Debugging output
-    print(f"User Query: {user_query.question}, Format: {user_query.format}")  # Debugging output
+    print(f"User Query: {user_query.question}")  # Debugging output
+    format_type = detect_chart_type(user_query.question)
     try:
         sql = generate_sql_english(user_query.question, schema)
         #if sql.startswith(""):
@@ -604,11 +634,11 @@ def generate(user_query: UserQuery):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"SQL Error: {e}")
     try:
-        if user_query.format == "full ai report":
+        if format_type == "ai report":
             analysis = generate_analysis(user_query.question, results)
             return {"type": "report", "analysis": analysis}
         else:
-            chart_str = generate_visualization(user_query.question, results, user_query.format)
+            chart_str = generate_visualization(user_query.question, results, format_type)
             # Attempt to parse valid JSON from LLM output
             chart_json = json.loads(chart_str.strip().strip("```json").strip("```").strip())
             return {"type": "chart", "data": chart_json}
@@ -621,8 +651,9 @@ def get_user_id(user: dict = Depends(get_current_user)):
 async def ask_question(request: Request):
     data = await request.json()
     question = data.get("question", "")
-    format_type = data.get("format", "")
     connection = data.get("connection", {})
+    format_type = detect_chart_type(question)
+    print(f"Detected format type: {format_type}")  # Debugging output
     
     # Extract connection details
     db_type = connection.get("dbType", "")
@@ -640,7 +671,6 @@ async def ask_question(request: Request):
             user = get_current_user(request)
             if user:
                 history_details = {
-                    "format": format_type,
                     "question": question,
                     "connection": {
                         "host": host,
@@ -778,7 +808,7 @@ async def ask_question(request: Request):
                 results.append(doc)
         
         # Generate visualization or report
-        if format_type == "full ai report":
+        if format_type == "ai report":
             analysis = generate_analysis(question, results)
             return {
                 "type": "report",
