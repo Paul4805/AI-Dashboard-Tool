@@ -32,7 +32,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allow all headers
 )
-
+from fastapi.staticfiles import StaticFiles
 from fastapi import APIRouter, Body
 from fastapi.responses import JSONResponse
 from database import (
@@ -52,7 +52,7 @@ from database import (
     delete_mysql_database,
     delete_mongodb_database
 )
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SESSION_EXPIRE_MINUTES = 30
@@ -162,7 +162,7 @@ async def landing_page(request: Request):
         return RedirectResponse("/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     else:
         # Show public landing page or redirect to login
-        return templates.TemplateResponse("landing.html", {"request": request})
+        return templates.TemplateResponse("login.html", {"request": request})
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
