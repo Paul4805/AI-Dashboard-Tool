@@ -35,7 +35,8 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9;
+            background: url("/static/images/background.jpeg") no-repeat center center fixed;
+            background-size: cover;
             color: var(--dark);
             line-height: 1.5;
             display: flex;
@@ -43,16 +44,20 @@
             align-items: center;
             min-height: 100vh;
             padding: 1rem;
+            display: flex;
+            justify-content: flex-end; /* Push container to the right */
+            align-items: center;
         }
 
         .container {
             width: 100%;
-            max-width: 440px;
+            max-width: 420px;
             background: white;
             padding: 2.5rem;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-md);
             text-align: center;
+            margin-right: 3rem; /* Optional spacing from right */
         }
 
         .logo {
