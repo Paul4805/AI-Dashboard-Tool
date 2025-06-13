@@ -1,0 +1,2988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Data Visualization Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Make sure Chart.js is loaded before any chart operations -->
+  <script>
+    // Verify Chart.js is loaded properly
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not loaded properly!');
+      } else {
+        console.log('Chart.js loaded successfully:', Chart.version);
+      }
+
+      // Update the database dropdown to show the currently selected database
+      const selectedDbStr = localStorage.getItem('selectedDatabase');
+      if (selectedDbStr) {
+        try {
+          const selectedDb = JSON.parse(selectedDbStr);
+          const selectDbBtn = document.getElementById('selectDbBtn');
+          if (selectDbBtn) {
+            selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${selectedDb.database} (${selectedDb.dbType})</span>`;
+          }
+          window.selectedDatabaseConnection = selectedDb;
+        } catch (e) {
+          console.error('Error parsing selectedDatabase from localStorage:', e);
+        }
+      }
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  {% if not username %}
+      <script>window.location.href = "/login";</script>
+  {% endif %}
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #6b85f1;
+      --secondary: #3f37c9;
+      --accent: #4895ef;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --success: #4cc9f0;
+      --danger: #f72585;
+      --warning: #f8961e;
+      --info: #7209b7;
+      --border-radius: 12px;
+      --border-radius-sm: 8px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.12);
+      --transition: all 0.3s ease;
+      
+      /* Light mode colors */
+      --bg-color: #f5f7fa;
+      --sidebar-bg: #ffffff;
+      --text-color: #212529;
+      --text-muted: #6c757d;
+      --card-bg: white;
+      --input-bg: white;
+      --pre-bg: #f8f9fa;
+      --border-color: #e9ecef;
+      --footer-bg: #ffffff;
+    }
+
+    .dark-mode {
+      /* Dark mode colors */
+      --bg-color: #1a1a1a;
+      --sidebar-bg: #2d2d2d;
+      --text-color: #f8f9fa;
+      --text-muted: #adb5bd;
+      --card-bg: #2d2d2d;
+      --input-bg: #3d3d3d;
+      --pre-bg: #2d2d2d;
+      --border-color: #495057;
+      --footer-bg: #2d2d2d;
+      --dark: #f8f9fa;
+      --light: #212529;
+    }
+    
+    /* Set dropdown background for + icon database list to black in dark mode */
+    .dark-mode #databaseDropdown {
+      background-color: #000000 !important;
+      color: var(--text-color);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      min-height: 100vh;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Styles */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background-color: var(--sidebar-bg);
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .menu-toggle {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-color);
+      cursor: pointer;
+    }
+
+    /* Sidebar Styles */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100vh;
+      background-color: var(--sidebar-bg);
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+      transition: left 0.3s ease;
+      z-index: 200;
+      overflow-y: auto;
+    }
+
+    .sidebar.active {
+      left: 0;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-title {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .sidebar-close {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: block;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      padding: 1rem 0;
+      margin: 0;
+    }
+
+    .sidebar-item {
+      padding: 0.5rem 1.5rem;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-color);
+      text-decoration: none;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-link:hover, .sidebar-link.active {
+      background-color: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+    }
+
+    .sidebar-link.active {
+      font-weight: 600;
+    }
+
+    /* Main Content Styles */
+    .main-content {
+      padding: 2rem;
+      transition: margin-left 0.3s ease;
+    }
+
+    .main-content.sidebar-active {
+      margin-left: 280px;
+    }
+
+    @media (max-width: 768px) {
+      .main-content.sidebar-active {
+        margin-left: 0;
+      }
+    }
+
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      width: 100%;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* Query Section */
+    .query-section {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      transition: background-color 0.3s ease;
+    }
+
+    .query-section.centered {
+      width: 100%;
+      margin-bottom: 2rem;
+    }
+
+    /* Canvas Section */
+    .canvas-section {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      transition: background-color 0.3s ease;
+    }
+
+    /* Form Elements */
+    .query-bar {
+      margin: 1.5rem auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    h2 {
+      color: var(--primary);
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      font-weight: 500;
+      color: var(--text-color);
+      font-size: 0.9rem;
+    }
+
+    input, select, button {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      background-color: var(--input-bg);
+      color: var(--text-color);
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background-color: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background-color: var(--text-muted);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--text-color);
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background-color: #d1145a;
+    }
+
+    .btn-success {
+      background-color: var(--success);
+    }
+
+    .btn-success:hover {
+      background-color: #3ab4d9;
+    }
+
+    /* Canvas Elements */
+    .canvas-toolbar {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    #dropZone {
+      position: relative;
+      border: 2px dashed var(--border-color);
+      padding: 1.5rem;
+      overflow: hidden;
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      min-height: 500px;
+      margin: 1.5rem auto 0;
+      box-shadow: var(--shadow);
+      width: 794px;
+      height: 1123px;
+    }
+
+    .chart-wrapper {
+      margin: 0.5rem;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      border-radius: var(--border-radius-sm);
+      position: absolute;
+      overflow: auto;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: var(--danger);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .report-wrapper:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .resize-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--primary);
+      right: 0;
+      bottom: 0;
+      cursor: se-resize;
+      border-radius: 2px 0 var(--border-radius-sm) 0;
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .chart-wrapper:hover .resize-handle {
+      opacity: 1;
+    }
+
+    .font-size-selector {
+      position: absolute;
+      bottom: 0.5rem;
+      left: 0.5rem;
+      padding: 0.25rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      opacity: 0;
+      transition: var(--transition);
+      background-color: var(--input-bg);
+      color: var(--text-color);
+    }
+
+    .chart-wrapper:hover .font-size-selector {
+      opacity: 1;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Courier New', monospace;
+      background: var(--pre-bg);
+      padding: 1rem;
+      border-radius: var(--border-radius-sm);
+      margin-top: 0.5rem;
+      color: var(--text-color);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input[type="number"] {
+      width: 80px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    #response {
+      background: var(--pre-bg);
+      padding: 1rem;
+      border-radius: var(--border-radius-sm);
+      margin-top: 1rem;
+      font-family: 'Courier New', monospace;
+      max-height: 200px;
+      overflow-y: auto;
+      color: var(--text-color);
+    }
+
+    #chartContainer {
+      margin-top: 1rem;
+    }
+
+    /* Footer Styles */
+    .footer {
+      background-color: var(--footer-bg);
+      padding: 1.5rem;
+      text-align: center;
+      border-top: 1px solid var(--border-color);
+      margin-left: 0;
+      width: 100%;
+      transition: margin-left 0.3s ease;
+    }
+
+    .footer-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 1200px) {
+      .sidebar {
+        transform: translateX(-100%);
+        z-index: 100;
+      }
+
+      .sidebar.active {
+        transform: translateX(0);
+      }
+
+      .sidebar-close {
+        display: block;
+      }
+
+      .menu-toggle {
+        display: block;
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .footer {
+        margin-left: 0;
+      }
+
+      #dropZone {
+        width: 100%;
+        height: auto;
+        min-height: 500px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        padding: 1rem;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .input-group {
+        min-width: 100%;
+      }
+
+      .canvas-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+    }
+
+    /* Add this to the style section */
+    .data-section {
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      transition: background-color 0.3s ease;
+      margin-bottom: 2rem;
+    }
+
+    .data-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .data-tab {
+      background: none;
+      border: none;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      color: var(--text-color);
+      cursor: pointer;
+      border-radius: var(--border-radius-sm);
+      transition: var(--transition);
+    }
+
+    .data-tab.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .data-tab-content {
+      display: none;
+    }
+
+    .data-tab-content.active {
+      display: block;
+    }
+
+    .data-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .data-list {
+      margin: 1rem 0;
+    }
+
+    .data-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .data-info small {
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .data-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .mt-2 {
+      margin-top: 1rem;
+    }
+
+    .upload-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Add these styles for the source form */
+    .source-form-container {
+      margin-top: 1.5rem;
+      border: 1px solid var(--primary-light);
+      background-color: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-close:hover {
+      color: var(--danger);
+    }
+
+    .source-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .form-row .input-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .source-fields {
+      background-color: rgba(67, 97, 238, 0.05);
+      padding: 1.5rem;
+      border-radius: var(--border-radius-sm);
+      border-left: 3px solid var(--primary);
+      margin-top: 0.5rem;
+    }
+
+    .columns-section {
+      margin-top: 1rem;
+    }
+
+    .columns-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .columns-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .column-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+      padding: 0.75rem;
+      background-color: rgba(255, 255, 255, 0.5);
+      border-radius: var(--border-radius-sm);
+    }
+
+    .dark-mode .column-row {
+      background-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .column-row .input-group {
+      margin-bottom: 0;
+    }
+
+    .column-name {
+      flex: 2;
+    }
+
+    .column-type {
+      flex: 1;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .database-selector {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    
+    .dropdown-content {
+      position: absolute;
+      background-color: var(--bg-color);
+      min-width: 250px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+    }
+    
+    .dropdown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .dropdown-header h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    
+    .database-list {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 0.5rem 0;
+    }
+    
+    .db-item {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+      .db-item:hover {
+        background-color: var(--hover-color);
+      }
+      
+      .dropdown-content .db-item {
+        color: var(--text-color);
+      }
+
+      :root {
+        --hover-color: rgba(67, 97, 238, 0.1);
+      }
+
+      .dark-mode {
+        --hover-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      .db-item.selected {
+        background-color: var(--primary-light);
+        font-weight: 500;
+      }
+      
+      .loading {
+        padding: 1rem;
+        text-align: center;
+        color: var(--text-muted);
+      }
+      
+      .selected-db {
+        display: inline-block;
+        margin-left: 0.5rem;
+        font-weight: 500;
+        color: #000000;
+      }
+    #closeDatabaseDropdown {
+      color: var(--text-color);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: color 0.3s ease;
+    }
+
+    #closeDatabaseDropdown:hover {
+      color: var(--danger);
+    }
+
+    /* New styles for database selector button and dropdown in light theme */
+    #selectDbBtn {
+      background-color: var(--primary-light);
+      color: white;
+      border: none;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    #selectDbBtn:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    #databaseDropdown {
+      background-color: var(--primary-light);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+
+    #databaseDropdown .dropdown-header {
+      border-bottom: none;
+      color: white;
+    }
+
+    #databaseDropdown .db-item {
+      color: white;
+    }
+
+    #databaseDropdown .db-item:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+  </style>
+  <style>
+    /* Improved design for voice icon button */
+    #voiceButton {
+      background-color: var(--accent);
+      color: white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    #voiceButton:hover {
+      background-color: var(--primary);
+      transform: scale(1.1);
+    }
+
+    #voiceButton:active {
+      background-color: var(--primary-light);
+      transform: scale(0.95);
+    }
+
+    #voiceButton i {
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <button class="menu-toggle" onclick="toggleSidebar()">
+      <i class="fas fa-bars"></i>
+    </button>
+    <h1 class="header-title">
+      <i class="fas fa-chart-line"></i> DataViz Dashboard
+    </h1>
+    <div class="header-actions">
+      <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+        <i class="fas fa-moon" id="darkModeIcon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">Menu</h2>
+      <button class="sidebar-close" onclick="toggleSidebar()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-item">
+        <a href="/" class="sidebar-link active">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/profile" class="sidebar-link">
+          <i class="fas fa-user"></i> Profile
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/data" class="sidebar-link">
+          <i class="fas fa-database"></i> Data
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/history" class="sidebar-link">
+          <i class="fas fa-history"></i> History
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/logout" class="sidebar-link">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="main-container">
+      <div class="query-section centered">
+        <h2>Ask a Question</h2>
+        <div class="database-selector">
+          <button type="button" id="selectDbBtn" class="btn-secondary" onclick="toggleDatabaseSelector()">
+            <i class="fas fa-database"></i> Select Database
+          </button>
+          <div id="dbSelectorDropdown" class="dropdown-content" style="display: none;">
+            <div class="dropdown-header">
+              <h3>Select Database</h3>
+              <button type="button" class="close-btn" onclick="toggleDatabaseSelector()">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div id="databaseList" class="database-list">
+              <div class="loading">Loading databases...</div>
+            </div>
+          </div>
+        </div>
+        <form onsubmit="submitQuery(event)" class="query-form">
+          <div class="input-group">
+            <input type="text" id="question" placeholder="Enter your data question..." required />
+          </div>
+          <!-- Removed the + icon button as per user request -->
+          <!-- <button type="button" class="btn-secondary" id="addButton" title="Add">
+            <i class="fas fa-plus"></i>
+          </button> -->
+          <button type="button" id="voiceButton" onclick="recordVoice()" class="btn-secondary">
+            <i class="fas fa-microphone"></i>
+          </button>
+          <div class="input-group">
+            <select id="format" required>
+              <option value="" disabled selected>Select a format</option>
+              <option value="bar graph">Bar Graph</option>
+              <option value="pie chart">Pie Chart</option>
+              <option value="line graph">Line Graph</option>
+              <option value="full ai report">Full AI Report</option>
+            </select>
+          </div>
+          <div id="databaseDropdown" class="dropdown-content" style="display:none; position: absolute; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; width: 200px;">
+            <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid #ccc;">
+              <span>Select Database</span>
+              <button type="button" id="closeDatabaseDropdown" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            </div>
+            <div id="databaseListContainer" style="padding: 0.5rem 1rem;">
+              <p>Loading databases...</p>
+            </div>
+          </div>
+          <button type="submit">
+            <i class="fas fa-magic"></i> Generate
+          </button>
+        </form>
+
+        <div id="response"></div>
+        <div id="chartContainer"></div>
+      </div>
+
+      <div class="canvas-section">
+        <h2>Dashboard Canvas</h2>
+
+        <div class="canvas-toolbar">
+          <div class="control-group">
+            <label for="canvasSize">Canvas Size:</label>
+            <select id="canvasSize" onchange="changeCanvasSize()">
+              <option value="A4">A4 (794 x 1123)</option>
+              <option value="A3">A3 (1123 x 1587)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="control-group" id="customSizeControls" style="display:none;">
+            <input type="number" id="customWidth" placeholder="Width" />
+            <input type="number" id="customHeight" placeholder="Height" />
+            <button onclick="applyCustomSize()">Apply</button>
+          </div>
+          <button onclick="resetCanvas()" class="btn-danger">
+            <i class="fas fa-trash"></i> Reset
+          </button>
+          <button onclick="addTextBox()" class="btn-secondary">
+            <i class="fas fa-font"></i> Add Text
+          </button>
+          <button onclick="savePDF()" class="btn-success">
+            <i class="fas fa-file-pdf"></i> Save canvas
+          </button>
+          <button onclick="exportCanvasAsPDF()" class="btn-success">
+            <i class="fas fa-file-pdf"></i> Export PDF
+          </button>
+        </div>
+
+        <div id="dropZone"></div>
+      </div>
+
+      
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p class="footer-text">
+      &copy; 2023 DataViz Dashboard. All rights reserved.
+    </p>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = "dashboardElements";
+    let savedElements = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    // Initialize canvas elements on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadCanvasElements();
+      initializeDarkMode();
+      
+      // Check if sidebar should be open by default on larger screens
+      if (window.innerWidth > 768) {
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        sidebar.classList.add('active');
+        mainContent.classList.add('sidebar-active');
+      }
+    });
+
+    // Toggle sidebar on mobile
+     function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('sidebar-active');
+        }
+        
+
+    // Dark mode toggle function
+    function toggleDarkMode() {
+      const body = document.body;
+      body.classList.toggle('dark-mode');
+      
+      const isDarkMode = body.classList.contains('dark-mode');
+      localStorage.setItem('darkMode', isDarkMode);
+      updateDarkModeIcon(isDarkMode);
+      
+      // Update charts if they exist
+      savedElements.forEach(el => {
+        if (el.type === 'chart') {
+          const wrapper = document.querySelector(`.chart-wrapper[style*="left: ${el.x}px"][style*="top: ${el.y}px"]`);
+          if (wrapper) {
+            const canvas = wrapper.querySelector('canvas');
+            if (canvas && canvas._chartInstance) {
+              const config = getChartConfig(el.content);
+              canvas._chartInstance.destroy();
+              canvas._chartInstance = new Chart(canvas, config);
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize dark mode state on load
+    function initializeDarkMode() {
+      const darkModeState = localStorage.getItem('darkMode') === 'true';
+      if (darkModeState) {
+        document.body.classList.add('dark-mode');
+      }
+      updateDarkModeIcon(darkModeState);
+    }
+
+    // Update dark mode icon
+    function updateDarkModeIcon(isDarkMode) {
+      const icon = document.getElementById('darkModeIcon');
+      if (isDarkMode) {
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+      } else {
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+      }
+    }
+
+    // Voice recording function
+    async function recordVoice() {
+      const responseBox = document.getElementById("response");
+      const questionInput = document.getElementById("question");
+      
+      try {
+        // Check if browser supports speech recognition
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+          throw new Error("Speech recognition not supported in this browser");
+        }
+        
+        // Create speech recognition object
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        
+        responseBox.textContent = "Listening... Speak now (5 second limit)";
+        
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          questionInput.value = transcript;
+          responseBox.textContent = "Voice transcribed successfully!";
+        };
+        
+        recognition.onerror = (event) => {
+          responseBox.textContent = "Error occurred in recognition: " + event.error;
+        };
+        
+        recognition.onspeechend = () => {
+          recognition.stop();
+        };
+        
+        recognition.start();
+        
+        // Stop after 5 seconds
+        setTimeout(() => {
+          if (recognition) {
+            recognition.stop();
+            responseBox.textContent = "Recording stopped after 5 seconds";
+          }
+        }, 5000);
+        
+      } catch (err) {
+        responseBox.textContent = "Error: " + err.message;
+      }
+    }
+
+    // Submit query function
+    async function submitQuery(event) {
+      event.preventDefault();
+
+      const question = document.getElementById("question").value;
+      const format = document.getElementById("format").value;
+      const responseBox = document.getElementById("response");
+      const chartContainer = document.getElementById("chartContainer");
+      
+      // Clear previous results
+      chartContainer.innerHTML = "";
+      responseBox.innerHTML = "<p>Processing your request...</p>";
+
+      try {
+        // Check if we have a selected database connection
+        if (!window.selectedDatabaseConnection) {
+          responseBox.innerHTML = "<p class='error'>Error: No database connection selected</p>";
+          return;
+        }
+
+        console.log("Sending query with connection:", window.selectedDatabaseConnection);
+        console.log("Question:", question, "Format:", format);
+        
+        const res = await fetch("https://05znwjn3jo3e2x-8000.proxy.runpod.net/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            question, 
+            format, 
+            connection: window.selectedDatabaseConnection 
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`Server responded with status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        console.log("Server response:", data);
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        // Display the raw response for debugging
+        responseBox.innerHTML = `<p><strong>Response received:</strong> Check console for details</p>`;
+        
+        // Now try to create a chart with the actual data
+        if (data.type === "chart" && data.data) {
+          let chartData = data.data;
+          
+          // Check if we need to parse the raw_data field
+          if (chartData.raw_data) {
+            try {
+              // Extract JSON from markdown code block if present
+              const jsonMatch = chartData.raw_data.match(/```json\s*([\s\S]*?)\s*```/);
+              const jsonString = jsonMatch ? jsonMatch[1] : chartData.raw_data;
+              
+              // Parse the JSON string
+              const parsedData = JSON.parse(jsonString);
+              console.log("Successfully parsed chart data:", parsedData);
+              
+              // Use the parsed data instead
+              chartData = parsedData;
+            } catch (parseError) {
+              console.error("Error parsing raw_data:", parseError);
+            }
+          }
+          
+          // Determine the chart type
+          let chartType = chartData.chart_type || format || 'bar';
+          
+          // Normalize chart type
+          if (chartType.includes('bar')) {
+            chartType = 'bar';
+          } else if (chartType.includes('line')) {
+            chartType = 'line';
+          } else if (chartType.includes('pie')) {
+            chartType = 'pie';
+          }
+          
+          console.log("Using chart type:", chartType);
+
+          // Normalize chartData for bar and line charts to have labels and values keys
+          if (chartType === 'bar' || chartType === 'line') {
+            if (chartData.x_axis && chartData.x_axis.values && chartData.y_axis && chartData.y_axis.values) {
+              chartData.labels = chartData.x_axis.values;
+              chartData.values = chartData.y_axis.values;
+            } else if (chartData.labels && chartData.values) {
+              // labels and values already present, do nothing
+            } else if (Array.isArray(chartData) && chartData.length > 0) {
+              // If chartData is an array of objects, extract labels and values
+              chartData.labels = Object.keys(chartData[0]);
+              chartData.values = chartData.map(item => Object.values(item)[0]);
+            } else {
+              // Fallback to empty arrays
+              chartData.labels = chartData.labels || [];
+              chartData.values = chartData.values || [];
+            }
+          }
+          
+          // For bar charts, use our special function
+          if (chartType === 'bar') {
+            try {
+              // Create preview chart
+              const previewChart = createBarChart(chartContainer, chartData);
+              responseBox.innerHTML += `<p>Bar chart created successfully!</p>`;
+              
+              // Add to dashboard
+              addBarChartToCanvas(chartData);
+            } catch (err) {
+              console.error("Error creating bar chart:", err);
+              responseBox.innerHTML += `<p class='error'>Bar Chart Error: ${err.message}</p>`;
+            }
+          } else {
+            // For other chart types, use the existing code
+            // Create a preview chart in the chart container
+            const previewCanvas = document.createElement("canvas");
+            chartContainer.appendChild(previewCanvas);
+            
+            // Fix for line chart background and border colors to be arrays for multiple points
+            let backgroundColor, borderColor;
+            if (chartType === 'line') {
+              backgroundColor = 'rgba(54, 162, 235, 0.5)';
+              borderColor = 'rgba(54, 162, 235, 1)';
+            } else {
+              backgroundColor = [
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(153, 102, 255, 0.7)',
+                'rgba(255, 159, 64, 0.7)'
+              ];
+              borderColor = undefined;
+            }
+            
+            const config = {
+              type: chartType,
+              data: {
+                labels: chartData.labels || [],
+                datasets: [{
+                  label: chartData.title || "Data",
+                  data: chartData.values || [],
+                  backgroundColor: backgroundColor,
+                  borderColor: borderColor,
+                  borderWidth: 1,
+                  fill: chartType === 'line' ? false : undefined,
+                  tension: chartType === 'line' ? 0.4 : 0 // smooth curves for line chart
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  title: {
+                    display: true,
+                    text: chartData.title || question
+                  }
+                },
+                scales: chartType === 'line' ? {
+                  x: {
+                    beginAtZero: false,
+                    ticks: {
+                      color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333333'
+                    },
+                    grid: {
+                      color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                    }
+                  },
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333333'
+                    },
+                    grid: {
+                      color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                    }
+                  }
+                } : {}
+              }
+            };
+            
+            try {
+              // Create the chart in the preview area
+              new Chart(previewCanvas, config);
+              responseBox.innerHTML += `<p>Chart created successfully! Type: ${chartType}</p>`;
+              
+              // Add to dashboard canvas directly
+              addChartToCanvas(chartData, config);
+            } catch (chartError) {
+              console.error("Error creating chart:", chartError);
+              responseBox.innerHTML += `<p class='error'>Chart Error: ${chartError.message}</p>`;
+            }
+          }
+        } else if (data.type === "report" && data.analysis) {
+          // Handle report data
+          const reportContent = data.analysis || "No analysis provided";
+          responseBox.innerHTML += `<div class="report-preview"><h3>Report Preview:</h3>${reportContent}</div>`;
+          
+          // Add report to canvas
+          addReportToCanvas(reportContent);
+        } else {
+          responseBox.innerHTML = `<p class='error'>Unexpected response format: ${JSON.stringify(data)}</p>`;
+        }
+      } catch (err) {
+        responseBox.innerHTML = `<p class='error'>Error: ${err.message}</p>`;
+        console.error("Query error:", err);
+      }
+    }
+
+    // Get chart configuration
+    function getChartConfig(data) {
+      const isDarkMode = document.body.classList.contains('dark-mode');
+      const textColor = isDarkMode ? '#e0e0e0' : '#333333';
+      const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      
+      console.log("Chart data received:", JSON.stringify(data, null, 2)); // Detailed debug log
+      
+      // Map user-friendly format names to Chart.js types
+      const chartTypeMap = {
+        'bar graph': 'bar',
+        'line graph': 'line',
+        'pie chart': 'pie',
+        'doughnut chart': 'doughnut',
+        'polar area': 'polarArea',
+        'radar chart': 'radar',
+        'scatter plot': 'scatter',
+        'bubble chart': 'bubble'
+      };
+      
+      // Get the correct chart type or default to bar
+      let type = data.chart_type || 'bar';
+      
+      // Convert from user-friendly name if needed
+      if (chartTypeMap[type.toLowerCase()]) {
+        type = chartTypeMap[type.toLowerCase()];
+      }
+      
+      console.log("Using chart type:", type);
+      
+      // Extract values and labels based on data structure
+      let values = [];
+      let labels = [];
+      
+      if (data.values) {
+        values = data.values;
+        labels = data.labels || Array(values.length).fill().map((_, i) => `Item ${i+1}`);
+      } else if (data.y_axis && data.y_axis.values) {
+        values = data.y_axis.values;
+        labels = data.x_axis?.values || Array(values.length).fill().map((_, i) => `Item ${i+1}`);
+      } else if (Array.isArray(data)) {
+        // Handle case where data is an array of objects
+        labels = Object.keys(data[0] || {});
+        values = data.map(item => Object.values(item)[0]);
+      } else {
+        console.error("No valid data structure found:", data);
+        labels = ["No Data"];
+        values = [0];
+      }
+      
+      // Generate colors if not provided
+      const colors = data.colors || [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 206, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)',
+        'rgba(201, 203, 207, 0.7)',
+        'rgba(255, 99, 132, 0.7)'
+      ];
+      
+      // Create the configuration object
+      const config = {
+        type: type,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: data.title || data.y_axis?.label || "Dataset",
+            data: values,
+            backgroundColor: type === 'line' ? colors[0] : colors,
+            borderColor: type === 'line' ? colors[0] : colors.map(c => c.replace('0.7', '1')),
+            borderWidth: 1,
+            fill: type === 'line' ? false : undefined
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 500 // Shorter animation for better performance
+          },
+          plugins: {
+            legend: { 
+              position: 'top',
+              labels: {
+                color: textColor
+              }
+            },
+            title: { 
+              display: true, 
+              text: data.title || "Chart",
+              color: textColor
+            }
+          }
+        }
+      };
+      
+      // Add specific options for bar charts
+      if (type === 'bar') {
+        config.options.scales = {
+          x: {
+            ticks: {
+              color: textColor
+            },
+            grid: {
+              color: gridColor
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: textColor
+            },
+            grid: {
+              color: gridColor
+            }
+          }
+        };
+      } else if (type === 'line') {
+        config.options.scales = {
+          x: {
+            ticks: {
+              color: textColor
+            },
+            grid: {
+              color: gridColor
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: textColor
+            },
+            grid: {
+              color: gridColor
+            }
+          }
+        };
+      }
+      
+      console.log("Generated chart config:", config);
+      return config;
+    }
+
+    // Load canvas elements
+    function loadCanvasElements() {
+      const dropZone = document.getElementById("dropZone");
+      
+      // Clear the drop zone first
+      while (dropZone.firstChild) {
+        dropZone.removeChild(dropZone.firstChild);
+      }
+      
+      // Load saved elements
+      savedElements.forEach(el => {
+        if (el.type === "chart") {
+          const wrapper = document.createElement("div");
+          wrapper.className = "chart-wrapper";
+          if(el.chartType === "bar") {
+            wrapper.classList.add("bar-chart-wrapper");
+          }
+          wrapper.style.position = "absolute";
+          wrapper.style.left = el.x + "px";
+          wrapper.style.top = el.y + "px";
+          wrapper.style.width = el.width + "px";
+          wrapper.style.height = el.height + "px";
+          wrapper.style.backgroundColor = "#fff";
+          wrapper.style.border = "1px solid #ddd";
+          wrapper.style.borderRadius = "4px";
+          wrapper.style.padding = "10px";
+          wrapper.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+          wrapper.style.zIndex = "10";
+          
+          // Add to drop zone first
+          dropZone.appendChild(wrapper);
+          
+          // Add delete button for all chart types
+          const delBtn = document.createElement("button");
+          delBtn.className = "delete-btn";
+          delBtn.innerHTML = "×";
+          delBtn.style.position = "absolute";
+          delBtn.style.top = "5px";
+          delBtn.style.right = "5px";
+          delBtn.style.background = "#ff5555";
+          delBtn.style.color = "white";
+          delBtn.style.border = "none";
+          delBtn.style.borderRadius = "50%";
+          delBtn.style.width = "20px";
+          delBtn.style.height = "20px";
+          delBtn.style.lineHeight = "18px";
+          delBtn.style.textAlign = "center";
+          delBtn.style.cursor = "pointer";
+          delBtn.style.zIndex = "15";
+          
+          delBtn.onclick = function() {
+            // If it's a chart, destroy the instance
+            if (el.type === "chart") {
+              const canvas = wrapper.querySelector("canvas");
+              if (canvas && canvas._chartInstance) {
+                canvas._chartInstance.destroy();
+              }
+            }
+            wrapper.remove();
+            const index = savedElements.indexOf(el);
+            if (index !== -1) {
+              savedElements.splice(index, 1);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+            }
+          };
+          wrapper.appendChild(delBtn);
+
+          const resizeHandle = document.createElement("div");
+          resizeHandle.className = "resize-handle";
+          wrapper.appendChild(resizeHandle);
+
+          if (el.type === "chart") {
+            const canvas = document.createElement("canvas");
+            canvas.width = el.width - 20;
+            canvas.height = el.height - 20;
+            wrapper.appendChild(canvas);
+            
+            // Create chart with a slight delay
+            setTimeout(() => {
+              try {
+                const config = getChartConfig(el.content);
+                canvas._chartInstance = new Chart(canvas, config);
+                console.log("Loaded chart with type:", config.type);
+              } catch (err) {
+                console.error("Error loading chart:", err);
+              }
+            }, 50);
+          } else if (el.type === "report") {
+            const pre = document.createElement("pre");
+            pre.textContent = el.content;
+            pre.style.whiteSpace = "pre-wrap";
+            pre.style.wordWrap = "break-word";
+            pre.style.overflowX = "auto";
+            pre.style.fontSize = (el.fontSize || 14) + "px";
+            pre.style.fontFamily = "monospace";
+            wrapper.appendChild(pre);
+          }
+          
+          // Make draggable and resizable using the helper function
+          makeElementDraggableAndResizable(wrapper, el);
+        } else if (el.type === "report" || el.type === "text") {
+          // Handle reports and text with editable content
+          const wrapper = document.createElement("div");
+          wrapper.className = "report-wrapper";
+          wrapper.style.position = "absolute";
+          wrapper.style.left = el.x + "px";
+          wrapper.style.top = el.y + "px";
+          wrapper.style.width = el.width + "px";
+          wrapper.style.height = el.height + "px";
+          wrapper.style.backgroundColor = "#fff";
+          wrapper.style.border = "1px solid #ddd";
+          wrapper.style.borderRadius = "4px";
+          wrapper.style.padding = "10px";
+          wrapper.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+          wrapper.style.overflow = "auto";
+          wrapper.style.fontSize = (el.fontSize || 14) + "px";
+          wrapper.style.fontFamily = "monospace";
+          wrapper.style.whiteSpace = "pre-wrap";
+          wrapper.style.wordWrap = "break-word";
+
+          // Add to drop zone
+          dropZone.appendChild(wrapper);
+
+          // Add delete button
+          const delBtn = document.createElement("button");
+          delBtn.className = "delete-btn";
+          delBtn.innerHTML = "×";
+          delBtn.style.position = "absolute";
+          delBtn.style.top = "5px";
+          delBtn.style.right = "5px";
+          delBtn.style.background = "#ff5555";
+          delBtn.style.color = "white";
+          delBtn.style.border = "none";
+          delBtn.style.borderRadius = "50%";
+          delBtn.style.width = "20px";
+          delBtn.style.height = "20px";
+          delBtn.style.lineHeight = "18px";
+          delBtn.style.textAlign = "center";
+          delBtn.style.cursor = "pointer";
+          delBtn.style.zIndex = "15";
+
+          delBtn.onclick = function() {
+            wrapper.remove();
+            const index = savedElements.indexOf(el);
+            if (index !== -1) {
+              savedElements.splice(index, 1);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+            }
+          };
+          wrapper.appendChild(delBtn);
+
+          // Add editable content div
+          const contentDiv = document.createElement("div");
+          contentDiv.contentEditable = true;
+          contentDiv.className = "editable-text-content";
+          contentDiv.innerText = el.content;
+          contentDiv.style.width = "100%";
+          contentDiv.style.height = "100%";
+          contentDiv.style.outline = "none";
+          contentDiv.style.overflow = "auto";
+          contentDiv.style.whiteSpace = "pre-wrap";
+          contentDiv.style.wordWrap = "break-word";
+          contentDiv.style.fontSize = (el.fontSize || 14) + "px";
+          contentDiv.style.fontFamily = "monospace";
+          wrapper.appendChild(contentDiv);
+
+          // Save content on input or blur
+          contentDiv.addEventListener("input", () => {
+            el.content = contentDiv.innerText;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          });
+          contentDiv.addEventListener("blur", () => {
+            el.content = contentDiv.innerText;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+          });
+
+          // Make draggable and resizable using the helper function
+          makeElementDraggableAndResizable(wrapper, el);
+        }
+      });
+    }
+
+    // Reset canvas
+    function resetCanvas() {
+      if (confirm("Clear all canvas elements?")) {
+        savedElements = [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+        loadCanvasElements();
+      }
+    }
+
+    // Change canvas size
+    function changeCanvasSize() {
+      const select = document.getElementById("canvasSize");
+      const dropZone = document.getElementById("dropZone");
+      const customSizeControls = document.getElementById("customSizeControls");
+
+      if (select.value === "A4") {
+        dropZone.style.width = "794px";
+        dropZone.style.height = "1123px";
+        customSizeControls.style.display = "none";
+      } else if (select.value === "A3") {
+        dropZone.style.width = "1123px";
+        dropZone.style.height = "1587px";
+        customSizeControls.style.display = "none";
+      } else {
+        customSizeControls.style.display = "flex";
+      }
+    }
+
+    // Apply custom size
+    function applyCustomSize() {
+      const customWidth = document.getElementById("customWidth").value;
+      const customHeight = document.getElementById("customHeight").value;
+      const dropZone = document.getElementById("dropZone");
+
+      if (!customWidth || !customHeight) {
+        alert("Please enter valid custom width and height.");
+        return;
+      }
+      dropZone.style.width = customWidth + "px";
+      dropZone.style.height = customHeight + "px";
+    }
+
+    // Add text box
+    function addTextBox() {
+      const newElement = {
+        type: "text",
+        content: "Click to edit text...",
+        positionable: true,
+        x: 50,
+        y: 50,
+        width: 200,
+        height: 100,
+        fontSize: 16
+      };
+      savedElements.push(newElement);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      loadCanvasElements();
+    }
+    let isCanvasSaved = false;
+
+    async function savePDF(){
+      isCanvasSaved = true;
+      alert("Canvas saved successfully.");
+      // Reload only the canvas elements without reloading the entire page
+      loadCanvasElements();
+    }
+    // Export as PDF
+    async function exportCanvasAsPDF() {
+      if (!isCanvasSaved) {
+        alert("Please save the canvas before exporting.");
+        return;
+      }
+      
+  const dropZone = document.getElementById("dropZone");
+  
+  // Hide elements that should not appear in the PDF
+  const deleteButtons = dropZone.querySelectorAll(".delete-btn");
+  const fontSelectors = dropZone.querySelectorAll("select");
+  deleteButtons.forEach(btn => btn.style.display = "none");
+  fontSelectors.forEach(sel => sel.style.display = "none");
+
+  // Ensure dimensions are correct
+  const width = dropZone.offsetWidth;
+  const height = dropZone.offsetHeight;
+  console.log("Exporting with dimensions:", width, height);
+
+  try {
+    // Use a higher scale for better resolution
+    const canvas = await html2canvas(dropZone, { 
+      scale: 3,
+      useCORS: true,
+      logging: true,
+      scrollX: -window.scrollX,
+      scrollY: -window.scrollY,
+      windowWidth: document.documentElement.offsetWidth,
+      windowHeight: document.documentElement.offsetHeight
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+    
+
+    // Create PDF with A4 size in points (595.28 x 841.89)
+    const pdf = new jspdf.jsPDF({
+      orientation: "portrait",
+      unit: "pt",
+      format: [width, height]
+    });
+
+    // Add image to PDF with proper dimensions
+    pdf.addImage(imgData, "PNG", 0, 0, width, height, undefined, 'FAST');
+
+    // Save the PDF
+    pdf.save("dashboard_canvas.pdf");
+  } catch (error) {
+    console.error("Export failed:", error);
+  } finally {
+    // Restore UI elements
+    deleteButtons.forEach(btn => btn.style.display = "block");
+    fontSelectors.forEach(sel => sel.style.display = "inline-block");
+  }
+}
+
+    // Add this to the script section
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if we have a selected database in localStorage
+      const selectedDatabase = localStorage.getItem('selectedDatabase');
+      const refreshFlag = localStorage.getItem('refreshDatabaseList');
+      
+      console.log('DOMContentLoaded - Selected database:', selectedDatabase);
+      console.log('DOMContentLoaded - Refresh flag:', refreshFlag);
+      
+      // Always try to load databases when the page loads
+      loadDatabases();
+      
+      // Clear the refresh flag if it exists
+      if (refreshFlag === 'true') {
+        localStorage.removeItem('refreshDatabaseList');
+      }
+      
+      if (selectedDatabase) {
+        try {
+          const dbConnection = JSON.parse(selectedDatabase);
+          
+          // Update the UI to show the selected database
+          const selectDbBtn = document.getElementById('selectDbBtn');
+          if (selectDbBtn) {
+            selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${dbConnection.database} (${dbConnection.dbType})</span>`;
+            
+            // Store the connection details for use in the submitQuery function
+            window.selectedDatabaseConnection = dbConnection;
+          }
+        } catch (e) {
+          console.error('Error parsing selected database:', e);
+        }
+      }
+    });
+
+    // Function to switch between data tabs
+    function switchDataTab(tabId) {
+      // Hide all tab contents
+      const tabContents = document.querySelectorAll('.data-tab-content');
+      tabContents.forEach(tab => tab.classList.remove('active'));
+      
+      // Show the selected tab content
+      document.getElementById(tabId).classList.add('active');
+      
+      // Update tab buttons
+      const tabButtons = document.querySelectorAll('.data-tab');
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Add active class to clicked tab button
+      event.target.classList.add('active');
+    }
+
+    // Add these functions to your JavaScript section
+    document.addEventListener('DOMContentLoaded', function() {
+      // Show/hide new source form
+      const showFormBtn = document.getElementById('showNewSourceForm');
+      const closeFormBtn = document.getElementById('closeSourceForm');
+      const cancelFormBtn = document.getElementById('cancelSourceForm');
+      const formContainer = document.getElementById('newSourceFormContainer');
+      
+      if (showFormBtn && formContainer) {
+        showFormBtn.addEventListener('click', function() {
+          formContainer.style.display = 'block';
+          showFormBtn.style.display = 'none';
+        });
+      }
+      
+      if (closeFormBtn && formContainer) {
+        closeFormBtn.addEventListener('click', function() {
+          formContainer.style.display = 'none';
+          showFormBtn.style.display = 'block';
+        });
+      }
+      
+      if (cancelFormBtn && formContainer) {
+        cancelFormBtn.addEventListener('click', function() {
+          formContainer.style.display = 'none';
+          showFormBtn.style.display = 'block';
+        });
+      }
+      
+      // Handle form submission
+      const sourceForm = document.getElementById('newSourceForm');
+      if (sourceForm) {
+        sourceForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const sourceType = document.getElementById('sourceType').value;
+          const sourceName = document.getElementById('sourceName').value;
+          
+          // Collect data based on source type
+          let sourceData = {
+            name: sourceName,
+            type: sourceType
+          };
+          
+          if (sourceType === 'database') {
+            sourceData.connection = {
+              host: document.getElementById('dbHost').value,
+              port: document.getElementById('dbPort').value,
+              database: document.getElementById('dbName').value,
+              username: document.getElementById('dbUser').value,
+              password: document.getElementById('dbPassword').value
+            };
+          } else if (sourceType === 'api') {
+            sourceData.connection = {
+              url: document.getElementById('apiUrl').value,
+              apiKey: document.getElementById('apiKey').value,
+              method: document.getElementById('apiMethod').value,
+              fetchData: async function() {
+                try {
+                  const response = await fetch(this.url, {
+                    method: this.method,
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': this.apiKey ? `Bearer ${this.apiKey}` : ''
+                    }
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                  }
+                  
+                  const data = await response.json();
+                  return this.dataProcessor(data);
+                } catch (err) {
+                  console.error('Error fetching API data:', err);
+                  return null;
+                }
+              },
+              dataProcessor: function(data) {
+                try {
+                  // Add to available data sources for charts
+                  window.apiDataSources = window.apiDataSources || {};
+                  window.apiDataSources[sourceName] = data;
+                  
+                  // Create a chart from the data
+                  createChartFromApiData(sourceName, data);
+                  
+                  return data;
+                } catch (err) {
+                  console.error('Error processing API data:', err);
+                  return null;
+                }
+              }
+            };
+          } else if (sourceType === 'custom') {
+            const columns = [];
+            const columnRows = document.querySelectorAll('.column-row');
+            
+            columnRows.forEach(row => {
+              columns.push({
+                name: row.querySelector('.column-name').value,
+                type: row.querySelector('.column-type').value
+              });
+            });
+            
+            sourceData.tableName = document.getElementById('tableName').value;
+            sourceData.columns = columns;
+          }
+          
+          // Here you would typically send this data to your server
+          console.log('Creating new data source:', sourceData);
+          
+          // For demo purposes, add to the list
+          addDataSourceToList(sourceData);
+          
+          // Fetch data from the API source
+          if (sourceType === 'api') {
+            sourceData.connection.fetchData()
+              .then(() => console.log('API data fetched successfully'))
+              .catch(err => console.error('Failed to fetch API data:', err));
+          }
+          
+          // Reset and hide the form
+          sourceForm.reset();
+          formContainer.style.display = 'none';
+          showFormBtn.style.display = 'block';
+        });
+      }
+    });
+
+    // Toggle source fields based on source type
+    function toggleSourceFields() {
+      const sourceType = document.getElementById('sourceType').value;
+      
+      // Hide all source fields first
+      document.querySelectorAll('.source-fields').forEach(field => {
+        field.style.display = 'none';
+      });
+      
+      // Show the relevant fields based on selection
+      if (sourceType === 'database') {
+        document.getElementById('databaseFields').style.display = 'block';
+      } else if (sourceType === 'api') {
+        document.getElementById('apiFields').style.display = 'block';
+      } else if (sourceType === 'custom') {
+        document.getElementById('customTableFields').style.display = 'block';
+      }
+    }
+
+    // Add column function
+    function addColumn() {
+      const columnsContainer = document.getElementById('columnsContainer');
+      const newColumn = document.createElement('div');
+      newColumn.className = 'column-row';
+      newColumn.innerHTML = `
+        <div class="input-group">
+          <input type="text" placeholder="Column Name" class="column-name" required>
+        </div>
+        <div class="input-group">
+          <select class="column-type" required>
+            <option value="text">Text</option>
+            <option value="number">Number</option>
+            <option value="date">Date</option>
+            <option value="boolean">Boolean</option>
+          </select>
+        </div>
+        <button type="button" class="btn-danger btn-sm" onclick="removeColumn(this)">
+          <i class="fas fa-trash"></i>
+        </button>
+      `;
+      columnsContainer.appendChild(newColumn);
+    }
+
+    // Remove column function
+    function removeColumn(button) {
+      const columnRow = button.closest('.column-row');
+      columnRow.remove();
+    }
+
+    // Add data source to the list in the UI
+    function addDataSourceToList(sourceData) {
+      const dataList = document.querySelector('#dataSources .data-list');
+      
+      const dataItem = document.createElement('div');
+      dataItem.className = 'data-item';
+      
+      let icon = 'database';
+      if (sourceData.type === 'api') icon = 'cloud';
+      if (sourceData.type === 'custom') icon = 'table';
+      
+      dataItem.innerHTML = `
+        <div class="data-info">
+          <i class="fas fa-${icon}"></i>
+          <span>${sourceData.name}</span>
+          <small>Added just now</small>
+        </div>
+        <div class="data-actions">
+          <button class="btn-secondary btn-sm"><i class="fas fa-sync"></i></button>
+          <button class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+        </div>
+      `;
+      
+      dataList.appendChild(dataItem);
+    }
+
+    // Global variable to store the selected database
+    let selectedDatabase = null;
+
+    // Function to toggle database selector dropdown
+    function toggleDatabaseSelector() {
+      const dropdown = document.getElementById('dbSelectorDropdown');
+      if (dropdown.style.display === 'none') {
+        dropdown.style.display = 'block';
+        loadDatabases();
+      } else {
+        dropdown.style.display = 'none';
+      }
+    }
+
+    // Function to load available databases
+    async function loadDatabases() {
+      const databaseList = document.getElementById('databaseList');
+      if (!databaseList) return;
+      
+      databaseList.innerHTML = '<div class="loading">Loading databases...</div>';
+      
+      // Get connection details from localStorage
+      const currentConnection = localStorage.getItem('currentConnection');
+      if (!currentConnection) {
+        databaseList.innerHTML = '<div class="loading">No connection available</div>';
+        return;
+      }
+      
+      try {
+        const connectionDetails = JSON.parse(currentConnection);
+        const selectedDatabase = localStorage.getItem('selectedDatabase');
+        let selectedDbName = '';
+        
+        if (selectedDatabase) {
+          try {
+            const dbConnection = JSON.parse(selectedDatabase);
+            selectedDbName = dbConnection.database;
+          } catch (e) {
+            console.error('Error parsing selected database:', e);
+          }
+        }
+        
+        console.log('Loading databases with connection:', connectionDetails);
+        
+        // Use the full URL with port number for more reliable connection
+          const apiBaseUrl = 'https://05znwjn3jo3e2x-8000.proxy.runpod.net/api';
+          
+          // Use the connection details to fetch databases
+          const response = await fetch(`${apiBaseUrl}/databases`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(connectionDetails)
+          });
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Databases response:', data);
+        
+        // Clear the list
+        databaseList.innerHTML = '';
+        
+        // Add "Change Connection" option at the top
+        const changeConnItem = document.createElement('div');
+        changeConnItem.className = 'db-item change-connection';
+        changeConnItem.innerHTML = '<i class="fas fa-exchange-alt"></i> Change Connection';
+        changeConnItem.onclick = () => window.location.href = '/data';
+        databaseList.appendChild(changeConnItem);
+        
+        // Add a divider
+        const divider = document.createElement('div');
+        divider.className = 'dropdown-divider';
+        databaseList.appendChild(divider);
+        
+        // Add each database to the list
+          if (data.success && data.databases && data.databases.length > 0) {
+            data.databases.forEach(dbName => {
+              const dbItem = document.createElement('div');
+              dbItem.className = 'db-item';
+              if (dbName === selectedDbName) {
+                dbItem.className += ' selected';
+              }
+              dbItem.innerHTML = `<i class="fas fa-database"></i> ${dbName}`;
+              dbItem.onclick = () => selectDatabase(dbName);
+              databaseList.appendChild(dbItem);
+            });
+          
+          // Update the selected database in the UI
+          const selectDbBtn = document.getElementById('selectDbBtn');
+          if (selectDbBtn && selectedDbName) {
+            selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${selectedDbName} (${connectionDetails.dbType})</span>`;
+            
+            // Store the connection details for use in the submitQuery function
+            window.selectedDatabaseConnection = {...connectionDetails, database: selectedDbName};
+          } else if (selectDbBtn && data.databases.length > 0) {
+            // If no database was previously selected, select the first one
+            const firstDb = data.databases[0].name;
+            selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${firstDb} (${connectionDetails.dbType})</span>`;
+            
+            // Store the connection details for use in the submitQuery function
+            window.selectedDatabaseConnection = {...connectionDetails, database: firstDb};
+            
+            // Also update localStorage
+            localStorage.setItem('selectedDatabase', JSON.stringify({...connectionDetails, database: firstDb}));
+          }
+        } else {
+          databaseList.innerHTML += '<div class="no-databases">No databases found</div>';
+        }
+      } catch (err) {
+        console.error("Error loading databases:", err);
+        databaseList.innerHTML = '<div class="error">Error loading databases: ' + err.message + '</div>';
+        
+        // Still add the change connection option
+        const changeConnItem = document.createElement('div');
+        changeConnItem.className = 'db-item change-connection';
+        changeConnItem.innerHTML = '<i class="fas fa-exchange-alt"></i> Change Connection';
+        changeConnItem.onclick = () => window.location.href = '/data';
+        databaseList.appendChild(changeConnItem);
+      }
+    }
+
+    // Function to select a database
+    function selectDatabase(dbName) {
+      selectedDatabase = dbName;
+      
+      // Get the current connection details from localStorage
+      let connectionDetails = {};
+      const currentConnection = localStorage.getItem('currentConnection');
+      if (currentConnection) {
+        try {
+          connectionDetails = JSON.parse(currentConnection);
+        } catch (e) {
+          console.error('Error parsing connection details:', e);
+        }
+      }
+      
+      // Update with the selected database
+      connectionDetails.database = dbName;
+      
+      // Store the updated connection details
+      window.selectedDatabaseConnection = connectionDetails;
+      localStorage.setItem('selectedDatabase', JSON.stringify(connectionDetails));
+      
+      // Update the button text to show selected database
+      const selectDbBtn = document.getElementById('selectDbBtn');
+      selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${dbName}</span>`;
+      
+      // Close the dropdown
+      document.getElementById('dbSelectorDropdown').style.display = 'none';
+      
+      // Update selected item in the list
+      const dbItems = document.querySelectorAll('.db-item');
+      dbItems.forEach(item => {
+        if (item.textContent === dbName) {
+          item.classList.add('selected');
+        } else {
+          item.classList.remove('selected');
+        }
+      });
+      
+      console.log('Selected database connection:', window.selectedDatabaseConnection);
+    }
+
+    // Add this function to create charts from API data
+    function createChartFromApiData(sourceName, data) {
+      // Create a chart element
+      const chartElement = {
+        type: "chart",
+        content: {
+          chart_type: "bar",
+          title: `Data from ${sourceName}`,
+          labels: Object.keys(data[0] || {}),
+          values: data.map(item => Object.values(item)[0])
+        },
+        positionable: true,
+        x: 50,
+        y: 50,
+        width: 400,
+        height: 300
+      };
+      
+      // Add to saved elements
+      savedElements.push(chartElement);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      
+      // Refresh the canvas
+      loadCanvasElements();
+    }
+
+    // Function to directly add a chart to the canvas
+    function addChartToCanvas(chartData, config) {
+      console.log("Adding chart to canvas with type:", config.type);
+      
+      const dropZone = document.getElementById("dropZone");
+      
+      // Create wrapper for the chart
+      const wrapper = document.createElement("div");
+      wrapper.className = "chart-wrapper";
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "50px";
+      wrapper.style.top = "50px";
+      wrapper.style.width = "400px";
+      wrapper.style.height = "300px";
+      wrapper.style.backgroundColor = "#fff";
+      wrapper.style.border = "1px solid #ddd";
+      wrapper.style.borderRadius = "4px";
+      wrapper.style.padding = "10px";
+      wrapper.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+      wrapper.style.zIndex = "10"; // Ensure it's above other elements
+      
+      // Add to drop zone first so it's in the DOM
+      dropZone.appendChild(wrapper);
+      
+      // Create canvas for the chart
+      const canvas = document.createElement("canvas");
+      canvas.width = 380;
+      canvas.height = 280;
+      wrapper.appendChild(canvas);
+      
+      // Add delete button
+      const delBtn = document.createElement("button");
+      delBtn.className = "delete-btn";
+      delBtn.innerHTML = "×";
+      delBtn.style.position = "absolute";
+      delBtn.style.top = "5px";
+      delBtn.style.right = "5px";
+      delBtn.style.background = "#ff5555";
+      delBtn.style.color = "white";
+      delBtn.style.border = "none";
+      delBtn.style.borderRadius = "50%";
+      delBtn.style.width = "20px";
+      delBtn.style.height = "20px";
+      delBtn.style.lineHeight = "18px";
+      delBtn.style.textAlign = "center";
+      delBtn.style.cursor = "pointer";
+      delBtn.style.zIndex = "15";
+      
+      delBtn.onclick = function() {
+        // Destroy chart instance before removing from DOM
+        if (canvas._chartInstance) {
+          canvas._chartInstance.destroy();
+        }
+        wrapper.remove();
+        // Remove from saved elements
+        const index = savedElements.findIndex(el => 
+          el.x === parseInt(wrapper.style.left) && 
+          el.y === parseInt(wrapper.style.top)
+        );
+        if (index !== -1) {
+          savedElements.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+        }
+      };
+      wrapper.appendChild(delBtn);
+      
+      // Store the element data
+      const element = {
+        type: "chart",
+        content: {
+          ...chartData,
+          chart_type: config.type
+        },
+        x: 50,
+        y: 50,
+        width: 400,
+        height: 300
+      };
+      
+      // Add to saved elements
+      savedElements.push(element);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      
+      // For bar charts, ensure we have the right configuration
+      if (config.type === 'bar') {
+        // Make sure we have proper scales configuration
+        if (!config.options.scales) {
+          config.options.scales = {
+            x: {
+              beginAtZero: true
+            },
+            y: {
+              beginAtZero: true
+            }
+          };
+        }
+        
+        // Ensure we have proper dataset configuration
+        if (config.data.datasets && config.data.datasets.length > 0) {
+          // Make sure backgroundColor is an array for bar charts
+          if (!Array.isArray(config.data.datasets[0].backgroundColor)) {
+            const color = config.data.datasets[0].backgroundColor;
+            config.data.datasets[0].backgroundColor = Array(config.data.datasets[0].data.length).fill(color);
+          }
+        }
+      }
+      
+      // Create the chart with a slight delay to ensure DOM is ready
+      setTimeout(() => {
+        try {
+          // Make sure any previous instance is destroyed
+          if (canvas._chartInstance) {
+            canvas._chartInstance.destroy();
+          }
+          
+          // Create a new chart instance
+          const chartConfig = {
+            ...config,
+            options: {
+              ...config.options,
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: {
+                duration: 500 // Shorter animation for better responsiveness
+              }
+            }
+          };
+          
+          // Create the chart
+          canvas._chartInstance = new Chart(canvas, chartConfig);
+          console.log("Chart created with type:", config.type, "and data:", config.data);
+        } catch (err) {
+          console.error("Error creating chart:", err);
+        }
+      }, 100); // Increased delay to ensure DOM is ready
+      
+      // Make draggable and resizable
+      makeElementDraggableAndResizable(wrapper, element);
+    }
+
+    // Function to add a report to the canvas
+    function addReportToCanvas(reportContent) {
+      console.log("Adding report to canvas:", reportContent.substring(0, 100) + "...");
+      
+      const dropZone = document.getElementById("dropZone");
+      
+      // Create wrapper for the report
+      const wrapper = document.createElement("div");
+      wrapper.className = "report-wrapper";
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "50px";
+      wrapper.style.top = "50px";
+      wrapper.style.width = "400px";
+      wrapper.style.height = "300px";
+      wrapper.style.backgroundColor = "#fff";
+      wrapper.style.border = "1px solid #ddd";
+      wrapper.style.borderRadius = "4px";
+      wrapper.style.padding = "10px";
+      wrapper.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+      wrapper.style.overflow = "auto";
+      wrapper.style.zIndex = "10";
+      
+      // Create content div for the report (using div instead of pre for HTML content)
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "report-content";
+      contentDiv.innerHTML = reportContent; // Use innerHTML to render HTML
+      contentDiv.style.fontSize = "14px";
+      contentDiv.style.maxHeight = "calc(100% - 20px)";
+      contentDiv.style.overflow = "auto";
+      wrapper.appendChild(contentDiv);
+      
+      // Add delete button
+      const delBtn = document.createElement("button");
+      delBtn.className = "delete-btn";
+      delBtn.innerHTML = "×";
+      delBtn.style.position = "absolute";
+      delBtn.style.top = "5px";
+      delBtn.style.right = "5px";
+      delBtn.style.background = "#ff5555";
+      delBtn.style.color = "white";
+      delBtn.style.border = "none";
+      delBtn.style.borderRadius = "50%";
+      delBtn.style.width = "20px";
+      delBtn.style.height = "20px";
+      delBtn.style.lineHeight = "18px";
+      delBtn.style.textAlign = "center";
+      delBtn.style.cursor = "pointer";
+      delBtn.style.zIndex = "15";
+      
+      delBtn.onclick = function() {
+        wrapper.remove();
+        // Remove from saved elements
+        const index = savedElements.findIndex(el => 
+          el.type === "report" && 
+          el.x === parseInt(wrapper.style.left) && 
+          el.y === parseInt(wrapper.style.top)
+        );
+        if (index !== -1) {
+          savedElements.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+        }
+      };
+      wrapper.appendChild(delBtn);
+      
+      // Add to drop zone
+      dropZone.appendChild(wrapper);
+      
+      // Add to saved elements
+      const element = {
+        type: "report",
+        content: reportContent,
+        x: 50,
+        y: 50,
+        width: 400,
+        height: 300,
+        fontSize: 14
+      };
+      savedElements.push(element);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      
+      // Make draggable
+      interact(wrapper)
+        .draggable({
+          inertia: true,
+          modifiers: [
+            interact.modifiers.restrictRect({
+              restriction: 'parent',
+              endOnly: true
+            })
+          ],
+          listeners: {
+            move(event) {
+              const target = event.target;
+              const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+              const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+              
+              target.style.transform = `translate(${x}px, ${y}px)`;
+              target.setAttribute('data-x', x);
+              target.setAttribute('data-y', y);
+              
+              // Update element position
+              element.x = parseInt(wrapper.style.left) + x;
+              element.y = parseInt(wrapper.style.top) + y;
+            },
+            end() {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+            }
+          }
+        })
+        .resizable({
+          edges: { left: false, right: true, bottom: true, top: false },
+          listeners: {
+            move(event) {
+              element.width = Math.max(event.rect.width, 50);
+              element.height = Math.max(event.rect.height, 50);
+              
+              wrapper.style.width = element.width + "px";
+              wrapper.style.height = element.height + "px";
+            },
+            end() {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+            }
+          }
+        });
+    }
+
+    // Special function just for bar charts
+    function createBarChart(container, data) {
+      console.log("Creating bar chart with data:", data);
+      
+      // Clear any existing content
+      container.innerHTML = '';
+      
+      // Create a new canvas element
+      const canvas = document.createElement('canvas');
+      container.appendChild(canvas);
+      
+      // Extract data
+      const labels = data.labels || [];
+      const values = data.values || [];
+      const title = data.title || "Bar Chart";
+      
+      // Generate colors
+      const colors = [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 206, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)'
+      ];
+      
+      // Create color array matching the number of data points
+      const backgroundColors = [];
+      for (let i = 0; i < values.length; i++) {
+        backgroundColors.push(colors[i % colors.length]);
+      }
+      
+      // Create the chart
+      const myChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: title,
+            data: values,
+            backgroundColor: backgroundColors,
+            borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: title
+            }
+          }
+        }
+      });
+      
+      return myChart;
+    }
+
+    // Special function to add a bar chart to the canvas
+    function addBarChartToCanvas(chartData) {
+      console.log("Adding bar chart to canvas:", chartData);
+      
+      const dropZone = document.getElementById("dropZone");
+      
+      // Create wrapper for the chart
+      const wrapper = document.createElement("div");
+      wrapper.className = "chart-wrapper bar-chart-wrapper";
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "50px";
+      wrapper.style.top = "50px";
+      wrapper.style.width = "400px";
+      wrapper.style.height = "300px";
+      wrapper.style.backgroundColor = "#fff";
+      wrapper.style.border = "1px solid #ddd";
+      wrapper.style.borderRadius = "4px";
+      wrapper.style.padding = "10px";
+      wrapper.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+      wrapper.style.zIndex = "10";
+      
+      // Add to drop zone first
+      dropZone.appendChild(wrapper);
+      
+      // Create the bar chart
+      const chart = createBarChart(wrapper, chartData);
+      
+      // Add delete button
+      const delBtn = document.createElement("button");
+      delBtn.className = "delete-btn";
+      delBtn.innerHTML = "×";
+      delBtn.style.position = "absolute";
+      delBtn.style.top = "5px";
+      delBtn.style.right = "5px";
+      delBtn.style.background = "#ff5555";
+      delBtn.style.color = "white";
+      delBtn.style.border = "none";
+      delBtn.style.borderRadius = "50%";
+      delBtn.style.width = "20px";
+      delBtn.style.height = "20px";
+      delBtn.style.lineHeight = "18px";
+      delBtn.style.textAlign = "center";
+      delBtn.style.cursor = "pointer";
+      delBtn.style.zIndex = "15";
+      
+      delBtn.onclick = function() {
+        // Destroy chart instance before removing
+        if (chart) {
+          chart.destroy();
+        }
+        wrapper.remove();
+        // Remove from saved elements
+        const index = savedElements.findIndex(el => 
+          el.type === "chart" && 
+          el.chartType === "bar" &&
+          el.x === parseInt(wrapper.style.left) && 
+          el.y === parseInt(wrapper.style.top)
+        );
+        if (index !== -1) {
+          savedElements.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+        }
+      };
+      wrapper.appendChild(delBtn);
+      
+      // Add to saved elements
+      const element = {
+        type: "chart",
+        chartType: "bar",
+        content: chartData,
+        x: 50,
+        y: 50,
+        width: 400,
+        height: 300
+      };
+      savedElements.push(element);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+      
+      // Make draggable and resizable using the helper function
+      makeElementDraggableAndResizable(wrapper, element, chart);
+    }
+
+    // Helper function to make elements draggable and resizable
+    function makeElementDraggableAndResizable(wrapper, element, chart) {
+      // Make draggable
+      interact(wrapper)
+        .draggable({
+          inertia: true,
+          modifiers: [
+            interact.modifiers.restrictRect({
+              restriction: 'parent',
+              endOnly: true
+            })
+          ],
+          listeners: {
+            move(event) {
+              const target = event.target;
+              const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+              const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+              target.style.transform = `translate(${x}px, ${y}px)`;
+              target.setAttribute('data-x', x);
+              target.setAttribute('data-y', y);
+
+              element.x = parseInt(wrapper.style.left) + x;
+              element.y = parseInt(wrapper.style.top) + y;
+            },
+            end() {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+            }
+          }
+        })
+        .resizable({
+          edges: { left: false, right: true, bottom: true, top: false },
+          listeners: {
+            move(event) {
+              element.width = Math.max(event.rect.width, 50);
+              element.height = Math.max(event.rect.height, 50);
+
+              wrapper.style.width = element.width + "px";
+              wrapper.style.height = element.height + "px";
+
+              if (element.type === "chart") {
+                const canvas = wrapper.querySelector("canvas");
+                if (canvas) {
+                  canvas.width = element.width - 20;
+                  canvas.height = element.height - 20;
+                }
+              }
+            },
+            end() {
+              if (element.type === "chart") {
+                if (chart && typeof chart.destroy === 'function') {
+                  chart.destroy();
+                  // Recreate the chart
+                  if (element.chartType === "bar") {
+                    createBarChart(wrapper, element.content);
+                  } else {
+                    const canvas = wrapper.querySelector("canvas");
+                    if (canvas) {
+                      const config = getChartConfig(element.content);
+                      canvas._chartInstance = new Chart(canvas, config);
+                    }
+                  }
+                } else {
+                  const canvas = wrapper.querySelector("canvas");
+                  if (canvas && canvas._chartInstance) {
+                    canvas._chartInstance.destroy();
+                    const config = getChartConfig(element.content);
+                    canvas._chartInstance = new Chart(canvas, config);
+                  }
+                }
+              }
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(savedElements));
+            }
+          }
+        });
+    }
+
+    // Add a function to handle API errors
+    function handleApiError(error, elementId, defaultMessage = 'An error occurred') {
+      console.error('API Error:', error);
+      const element = document.getElementById(elementId);
+      if (element) {
+        let errorMessage = defaultMessage;
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          errorMessage = `Server error: ${error.response.status}`;
+          if (error.response.data && error.response.data.message) {
+            errorMessage += ` - ${error.response.data.message}`;
+          }
+        } else if (error.request) {
+          // The request was made but no response was received
+          errorMessage = 'No response from server. Please check your connection.';
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          errorMessage = error.message || defaultMessage;
+        }
+        element.innerHTML = `<div class="error">${errorMessage}</div>`;
+      }
+    }
+  </script>
+  <script>
+    // Add event listener for the + button
+    document.addEventListener('DOMContentLoaded', () => {
+      const addButton = document.getElementById('addButton');
+      const databaseDropdown = document.getElementById('databaseDropdown');
+      const databaseListContainer = document.getElementById('databaseListContainer');
+      const closeDatabaseDropdown = document.getElementById('closeDatabaseDropdown');
+
+      // Function to fetch databases from backend
+      async function fetchDatabases() {
+        databaseListContainer.innerHTML = '<p>Loading databases...</p>';
+        try {
+          const currentConnectionStr = localStorage.getItem('currentConnection');
+          if (!currentConnectionStr) {
+            databaseListContainer.innerHTML = '<p>No connection found. Please connect a database first.</p>';
+            return;
+          }
+          const currentConnection = JSON.parse(currentConnectionStr);
+
+          // Add "Change Connection" option at the top
+          const changeConnItem = document.createElement('div');
+          changeConnItem.className = 'db-item change-connection';
+          changeConnItem.innerHTML = '<i class="fas fa-exchange-alt"></i> Change Connection';
+          changeConnItem.style.padding = '0.25rem 0';
+          changeConnItem.style.cursor = 'pointer';
+          changeConnItem.addEventListener('click', () => {
+            window.location.href = '/data';
+          });
+          databaseListContainer.innerHTML = '';
+          databaseListContainer.appendChild(changeConnItem);
+
+          const response = await fetch('https://05znwjn3jo3e2x-8000.proxy.runpod.net/api/databases', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentConnection)
+          });
+          if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+          }
+          const data = await response.json();
+          if (data.success && data.databases && data.databases.length > 0) {
+            data.databases.forEach(db => {
+              const dbItem = document.createElement('div');
+              dbItem.textContent = db.name;
+              dbItem.style.padding = '0.25rem 0';
+              dbItem.style.cursor = 'pointer';
+              dbItem.addEventListener('click', () => {
+                // Set selected database in localStorage
+                const updatedConnection = { ...currentConnection, database: db.name };
+                localStorage.setItem('selectedDatabase', JSON.stringify(updatedConnection));
+                // Update UI button text
+                const selectDbBtn = document.getElementById('selectDbBtn');
+                if (selectDbBtn) {
+                  selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${db.name} (${currentConnection.dbType})</span>`;
+                }
+                // Close dropdown
+                databaseDropdown.style.display = 'none';
+                // Update global selectedDatabaseConnection
+                window.selectedDatabaseConnection = updatedConnection;
+              });
+              databaseListContainer.appendChild(dbItem);
+            });
+          } else {
+            databaseListContainer.innerHTML += '<p>No databases found.</p>';
+          }
+        } catch (error) {
+          console.error('Error fetching databases:', error);
+          databaseListContainer.innerHTML = `<p>Error loading databases: ${error.message}</p>`;
+        }
+      }
+
+      addButton.addEventListener('click', () => {
+        const currentConnectionStr = localStorage.getItem('currentConnection');
+        if (!currentConnectionStr) {
+          // No connection, redirect to /data page to connect
+          window.location.href = '/data';
+          return;
+        }
+        // Toggle dropdown visibility and position near the + button
+        if (databaseDropdown.style.display === 'block') {
+          databaseDropdown.style.display = 'none';
+        } else {
+          // Position the dropdown near the + button
+          const rect = addButton.getBoundingClientRect();
+          databaseDropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+          databaseDropdown.style.left = (rect.left + window.scrollX) + 'px';
+          databaseDropdown.style.display = 'block';
+          fetchDatabases();
+        }
+      });
+
+      closeDatabaseDropdown.addEventListener('click', () => {
+        databaseDropdown.style.display = 'none';
+      });
+
+      // Close dropdown if clicking outside
+      document.addEventListener('click', (event) => {
+        if (!addButton.contains(event.target) && !databaseDropdown.contains(event.target)) {
+          databaseDropdown.style.display = 'none';
+        }
+      });
+
+      // On page load, update selectDbBtn text if selectedDatabase exists
+      const selectedDbStr = localStorage.getItem('selectedDatabase');
+      if (selectedDbStr) {
+        try {
+          const selectedDb = JSON.parse(selectedDbStr);
+          const selectDbBtn = document.getElementById('selectDbBtn');
+          if (selectDbBtn) {
+            selectDbBtn.innerHTML = `<i class="fas fa-database"></i> Database: <span class="selected-db">${selectedDb.database} (${selectedDb.dbType})</span>`;
+          }
+          window.selectedDatabaseConnection = selectedDb;
+        } catch (e) {
+          console.error('Error parsing selectedDatabase from localStorage:', e);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

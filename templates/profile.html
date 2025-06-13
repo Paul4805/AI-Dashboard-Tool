@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #6b85f1;
+      --secondary: #3f37c9;
+      --accent: #4895ef;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --success: #4cc9f0;
+      --error: #ef4444;
+      --background: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--background);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header styles */
+    .header {
+      background-color: var(--surface);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .menu-toggle, .dark-mode-toggle {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+    
+    .menu-toggle:hover, .dark-mode-toggle:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+      color: var(--primary);
+    }
+    
+    /* Sidebar styles */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 280px;
+      height: 100vh;
+      background-color: var(--surface);
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+      transition: left 0.3s ease;
+      z-index: 200;
+      overflow-y: auto;
+    }
+    
+    .sidebar.active {
+      left: 0;
+    }
+    
+    .sidebar-header {
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .sidebar-title {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    .sidebar-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+    
+    .sidebar-menu {
+      list-style: none;
+      padding: 1rem 0;
+      margin: 0;
+    }
+    
+    .sidebar-item {
+      padding: 0.5rem 1.5rem;
+    }
+    
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .sidebar-link:hover, .sidebar-link.active {
+      background-color: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+    }
+    
+    .sidebar-link.active {
+      font-weight: 600;
+    }
+    
+    /* Main content */
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      transition: margin-left 0.3s ease;
+    }
+    
+    .main-content.sidebar-active {
+      margin-left: 280px;
+    }
+    
+    /* Profile form styles */
+    .profile-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: var(--surface);
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.06);
+    }
+    
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      margin-bottom: 2rem;
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+    
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    label {
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+    
+    input[type="text"],
+    input[type="email"] {
+      padding: 0.875rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      width: 100%;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+    }
+    
+    input[type="text"]:focus,
+    input[type="email"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+    }
+    
+    input[readonly] {
+      background-color: #f8fafc;
+      cursor: not-allowed;
+      color: var(--text-secondary);
+    }
+    
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.875rem 1rem;
+      font-size: 0.9375rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      margin-top: 0.5rem;
+    }
+    
+    button:hover {
+      background-color: rgb(102, 102, 102);
+      transform: translateY(-1px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .message {
+      text-align: center;
+      margin-bottom: 1.25rem;
+      font-weight: 500;
+      color: var(--success);
+      background-color: rgba(16, 185, 129, 0.1);
+      padding: 0.75rem;
+      border-radius: 8px;
+    }
+    
+    .error {
+      color: var(--error);
+      font-weight: 500;
+      margin-bottom: 1.25rem;
+      text-align: center;
+      background-color: rgba(239, 68, 68, 0.1);
+      padding: 0.75rem;
+      border-radius: 8px;
+    }
+    
+    /* Footer styles */
+    .footer {
+      background-color: var(--surface);
+      padding: 1rem;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+    
+    .footer-text {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin: 0;
+    }
+    
+    /* Dark mode */
+    body.dark-mode {
+      --background: #121212;
+      --surface: #1e1e1e;
+      --border: #333333;
+      --text: #e0e0e0;
+      --text-secondary: #a0a0a0;
+    }
+    
+    @media (max-width: 768px) {
+      .main-content.sidebar-active {
+        margin-left: 0;
+      }
+      
+      .profile-container {
+        padding: 1.5rem;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <button class="menu-toggle" onclick="toggleSidebar()">
+      <i class="fas fa-bars"></i>
+    </button>
+    <h1 class="header-title">
+      <i class="fas fa-user"></i> User Profile
+    </h1>
+    <div class="header-actions">
+      
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">Menu</h2>
+      <button class="sidebar-close" onclick="toggleSidebar()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-item">
+        <a href="/" class="sidebar-link">
+          <i class="fas fa-home"></i> Dashboard
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/profile" class="sidebar-link active">
+          <i class="fas fa-user"></i> Profile
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/data" class="sidebar-link">
+          <i class="fas fa-database"></i> Data
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/history" class="sidebar-link">
+          <i class="fas fa-history"></i> History
+        </a>
+      </li>
+      <li class="sidebar-item">
+        <a href="/logout" class="sidebar-link">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <div class="profile-container">
+      <h1>User Profile</h1>
+      {% if message %}
+        <div class="message">{{ message }}</div>
+      {% endif %}
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+      <form method="post" action="/profile">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" value="{{ user.username }}" readonly />
+        </div>
+        
+        <div class="form-group">
+          <label for="first_name">First Name</label>
+          <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}" />
+        </div>
+        
+        <div class="form-group">
+          <label for="last_name">Last Name</label>
+          <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}" />
+        </div>
+        
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" value="{{ user.email or '' }}" />
+        </div>
+
+        <button type="submit">Update Profile</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p class="footer-text">
+      &copy; 2023 DataViz Dashboard. All rights reserved.
+    </p>
+  </footer>
+
+  <script>
+    // Initialize dark mode on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeDarkMode();
+    });
+
+    // Toggle sidebar
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const mainContent = document.querySelector('.main-content');
+      sidebar.classList.toggle('active');
+      mainContent.classList.toggle('sidebar-active');
+    }
+    
+    // Toggle dark mode
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      const isDarkMode = document.body.classList.contains('dark-mode');
+      
+      // Update icon
+      const icon = document.getElementById('darkModeIcon');
+      if (isDarkMode) {
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+        localStorage.setItem('darkMode', 'true');
+      } else {
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+        localStorage.setItem('darkMode', 'false');
+      }
+    }
+    
+    // Initialize dark mode based on localStorage
+    function initializeDarkMode() {
+      const isDarkMode = localStorage.getItem('darkMode') === 'true';
+      const icon = document.getElementById('darkModeIcon');
+      
+      if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+      } else {
+        document.body.classList.remove('dark-mode');
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+      }
+    }
+  </script>
+</body>
+</html>

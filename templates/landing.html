@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GRAPHTASTIC 9000™ - The Ultimate Business Graph Experience</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4338ca;
+      --secondary: #8b5cf6;
+      --text: #1e293b;
+      --text-light: #475569;
+      --bg: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #e0e7ff, #f1f5f9);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Full-screen layout */
+    .page-wrapper {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Navbar Styles */
+    .navbar {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem 3rem;
+      display: flex;
+      justify-content: center;
+      animation: slideDown 0.5s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
+    }
+
+    .navbar-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+
+    /* Hero Section */
+    .hero {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 0 3rem; /* Removed horizontal padding */
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-content {
+      max-width: none; /* Remove max-width to allow full width */
+      width: 100%;
+      background: var(--bg);
+      padding: 4rem 1rem; /* Reduced horizontal padding */
+      border-radius: 30px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+      position: relative;
+      z-index: 1;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Main Content */
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      align-items: start;
+    }
+
+    .left-column {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .right-column {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+      line-height: 1.2;
+      animation: textGlow 3s ease-in-out infinite alternate;
+      grid-column: 1 / -1;
+      text-align: center;
+    }
+
+    @keyframes textGlow {
+      0% { text-shadow: 0 0 5px rgba(99, 102, 241, 0.3); }
+      100% { text-shadow: 0 0 15px rgba(99, 102, 241, 0.5); }
+    }
+
+    .tagline {
+      font-size: 1.5rem;
+      color: var(--text-light);
+      margin-bottom: 3rem;
+      font-style: italic;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+    }
+
+    /* Features */
+    .feature {
+      background: #f9fafb;
+      border-left: 4px solid var(--primary);
+      padding: 1.8rem;
+      border-radius: 15px;
+      text-align: left;
+      position: relative;
+      z-index: 1;
+      transition: all 0.4s ease;
+      transform: translateX(0);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+    }
+
+    .feature:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      margin-bottom: 1rem;
+    }
+
+    .feature p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      color: var(--text-light);
+    }
+
+    /* Testimonial */
+    .testimonial {
+      background: #fff7ed;
+      padding: 2rem;
+      border-radius: 15px;
+      font-style: italic;
+      position: relative;
+      color: #7c3aed;
+      z-index: 1;
+      grid-column: 1 / -1;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .testimonial::before {
+      content: '“';
+      font-size: 5rem;
+      color: #fcd34d;
+      position: absolute;
+      left: 20px;
+      top: -10px;
+      opacity: 0.2;
+    }
+
+    .testimonial-author {
+      text-align: right;
+      font-weight: bold;
+      color: #334155;
+      margin-top: 1rem;
+    }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 2rem;
+      margin: 2rem 0;
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+    }
+
+    .stat {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 2rem;
+      border-radius: 15px;
+      text-align: center;
+      transition: all 0.4s ease;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-number {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      animation: countUp 1s ease-out;
+    }
+
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-label {
+      font-size: 1.1rem;
+      color: #64748b;
+    }
+
+    /* Buttons */
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 3rem;
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+    }
+
+    .btn {
+      padding: 1.2rem 2.5rem;
+      font-size: 1.1rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.4s ease;
+      min-width: 220px;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: rotate(30deg);
+      transition: all 0.6s ease;
+    }
+
+    .btn:hover::after {
+      left: 100%;
+    }
+
+    .btn.login {
+      background-color: #64748b;
+      color: white;
+    }
+
+    .btn.register {
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      color: white;
+    }
+
+    .btn:hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    }
+
+    .btn:active {
+      transform: translateY(2px);
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 3rem;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+    }
+
+    /* Background Elements */
+    .floating-graph {
+      position: absolute;
+      opacity: 0.08;
+      z-index: 0;
+      animation: float 15s infinite linear;
+      font-size: 8rem;
+    }
+
+    .graph-1 {
+      top: 10%;
+      left: 5%;
+      animation-delay: 0s;
+    }
+
+    .graph-2 {
+      bottom: 15%;
+      right: 5%;
+      animation-delay: 3s;
+      font-size: 10rem;
+    }
+
+    .graph-3 {
+      top: 30%;
+      right: 10%;
+      animation-delay: 6s;
+      font-size: 7rem;
+    }
+
+    .graph-4 {
+      bottom: 25%;
+      left: 10%;
+      animation-delay: 2s;
+      font-size: 9rem;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-30px) rotate(5deg); }
+      100% { transform: translateY(0) rotate(0deg); }
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 1200px) {
+      h1 {
+        font-size: 3rem;
+      }
+      
+      .tagline {
+        font-size: 1.3rem;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+      
+      .hero {
+        padding: 6rem 2rem 3rem;
+      }
+      
+      .hero-content {
+        padding: 3rem 2rem;
+      }
+      
+      .stats {
+        flex-direction: column;
+      }
+      
+      .stat {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.5rem;
+      }
+      
+      .tagline {
+        font-size: 1.2rem;
+      }
+      
+      .navbar {
+        padding: 1.2rem 2rem;
+      }
+      
+      .navbar-title {
+        font-size: 1.5rem;
+      }
+      
+      .feature {
+        padding: 1.5rem;
+      }
+      
+      .buttons {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 576px) {
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .tagline {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .hero {
+        padding: 5rem 1.5rem 2rem;
+      }
+      
+      .hero-content {
+        padding: 2.5rem 1.5rem;
+      }
+      
+      .feature-title {
+        font-size: 1.2rem;
+      }
+      
+      .feature p {
+        font-size: 1rem;
+      }
+      
+      .stat-number {
+        font-size: 2.5rem;
+      }
+      
+      .stat-label {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <nav class="navbar">
+      <h1 class="navbar-title">GRAPHTASTIC 9000™</h1>
+    </nav>
+
+    <section class="hero">
+      <!-- Floating graph elements -->
+      <div class="floating-graph graph-1">📊</div>
+      <div class="floating-graph graph-2">📈</div>
+      <div class="floating-graph graph-3">📉</div>
+      <div class="floating-graph graph-4">📊</div>
+      
+      <div class="hero-content">
+        <h1 class="animate__animated animate__fadeIn">Data Visualization™</h1>
+        <p class="tagline animate__animated animate__fadeIn animate__delay-1s">The Most Revolutionary Business Graph Technology Since Pie Charts!</p>
+
+        <div class="buttons">
+          <a href="/login" class="btn login animate__animated animate__fadeInLeft">Login</a>
+          <a href="/signup" class="btn register animate__animated animate__fadeInRight">Register</a>
+        </div>
+
+        <div class="main-content">
+          <div class="left-column">
+            <div class="feature animate__animated animate__fadeInLeft">
+              <div class="feature-title">Unprecedented Graphing Power</div>
+              <p>HyperGraph™ renders business data up to 3.7x more graphy. Visuals that practically dance off the screen!</p>
+            </div>
+
+            <div class="feature animate__animated animate__fadeInLeft animate__delay-1s">
+              <div class="feature-title">Patented "WOW" Factor</div>
+              <p>Executive animations turn boring revenue projections into cinematic experiences.</p>
+            </div>
+
+            <div class="feature animate__animated animate__fadeInLeft animate__delay-2s">
+              <div class="feature-title">Zero-Learning Curve (Mostly)</div>
+              <p>Our UI is as intuitive as a goldfish. Well... sort of.*</p>
+              <p style="font-size:0.9rem; margin-top: 0.5rem;">*Goldfish training not included. Interface may be slightly complex.</p>
+            </div>
+          </div>
+
+          <div class="right-column">
+            <div class="feature animate__animated animate__fadeInRight">
+              <div class="feature-title">Cloud-Based Graphing</div>
+              <p>Put your graphs in the cloud. Not just on your desk. They float. They inspire. They're legendary.</p>
+            </div>
+
+            <div class="feature animate__animated animate__fadeInRight animate__delay-1s">
+              <div class="feature-title">AI-Powered Insights</div>
+              <p>Our algorithms don't just show data - they tell you what it means (with 87% accuracy).</p>
+            </div>
+
+            <div class="feature animate__animated animate__fadeInRight animate__delay-2s">
+              <div class="feature-title">Enterprise Ready</div>
+              <p>Scales from small business to Fortune 500. Because everyone deserves great graphs.</p>
+            </div>
+          </div>
+
+          <div class="testimonial animate__animated animate__pulse animate__delay-1s">
+            <p>"I used to make $50k/year. Now it's the same... but the graphs are sick! My boss noticed."</p>
+            <div class="testimonial-author">- Bob from Accounting (probably)</div>
+          </div>
+
+          <div class="stats">
+            <div class="stat animate__animated animate__fadeInUp">
+              <div class="stat-number">127%</div>
+              <div class="stat-label">More Graphiness</div>
+            </div>
+            <div class="stat animate__animated animate__fadeInUp animate__delay-1s">
+              <div class="stat-number">∞</div>
+              <div class="stat-label">Graph Potential</div>
+            </div>
+            <div class="stat animate__animated animate__fadeInUp animate__delay-2s">
+              <div class="stat-number">24/7</div>
+              <div class="stat-label">Uptime</div>
+            </div>
+          </div>
+
+          <div class="disclaimer animate__animated animate__fadeIn animate__delay-1s">
+            *GRAPHTASTIC 9000™ may not actually increase revenue. Graphs shown are dramatizations. Not for flotation. Viewer discretion advised.
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Add intersection observer for scroll animations
+    document.addEventListener('DOMContentLoaded', function() {
+      const features = document.querySelectorAll('.feature');
+      const stats = document.querySelectorAll('.stat');
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate__animated', 'animate__fadeInUp');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      features.forEach(feature => {
+        observer.observe(feature);
+      });
+
+      stats.forEach(stat => {
+        observer.observe(stat);
+      });
+
+      // Button hover effects
+      const buttons = document.querySelectorAll('.btn');
+      buttons.forEach(button => {
+        button.addEventListener('mouseenter', () => {
+          button.classList.add('animate__animated', 'animate__pulse');
+        });
+        button.addEventListener('animationend', () => {
+          button.classList.remove('animate__animated', 'animate__pulse');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

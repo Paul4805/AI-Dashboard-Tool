@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User History</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #6b85f1;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #7209b7;
+            --border-radius: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        footer{
+            text-align: center;
+            padding-bottom: px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #212529;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+        
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .menu-toggle, .dark-mode-toggle {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: #4a5568;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+        .dark-mode-toggle{
+            display: none;
+        }
+        
+        .menu-toggle:hover, .dark-mode-toggle:hover {
+            background-color: #f8fafc;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 250px;
+            background-color: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            padding-top: 4rem;
+        }
+        
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .sidebar-close {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: #4a5568;
+            cursor: pointer;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            padding: 1rem 0;
+        }
+        
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: #4a5568;
+            text-decoration: none;
+            transition: background-color 0.2s ease;
+        }
+        
+        .sidebar-link:hover {
+            background-color: #f8fafc;
+        }
+        
+        .sidebar-link.active {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: #4361ee;
+            border-left: 3px solid #4361ee;
+        }
+        
+        /* Main Content */
+        .main-content {
+            padding: 6rem 2rem 2rem;
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .main-content.sidebar-active {
+            margin-left: 250px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        h1, h2, h3 {
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+        
+        /* History specific styles */
+        .history-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .filter-label {
+            font-weight: 500;
+            color: #4a5568;
+        }
+        
+        .filter-select, .filter-input {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        
+        .filter-button {
+            padding: 0.5rem 1rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .filter-button:hover {
+            background-color: var(--primary-light);
+        }
+        
+        .history-list {
+            list-style: none;
+        }
+        
+        .history-item {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background-color 0.2s ease;
+        }
+        
+        .history-item:hover {
+            background-color: #f8fafc;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .history-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background-color: #e2e8f0;
+            color: #4a5568;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .history-type.query {
+            background-color: var(--primary-light);
+            color: white;
+        }
+        
+        .history-type.connection {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .history-type.error {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .history-date {
+            color: #718096;
+            font-size: 0.875rem;
+        }
+        
+        .history-description {
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .history-details {
+            background-color: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            display: none;
+        }
+        
+        .history-toggle {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .empty-history {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+        
+        /* Dark mode */
+        body.dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .header,
+        body.dark-mode .sidebar,
+        body.dark-mode .container {
+            background-color: #1e1e1e;
+            border-color: #333;
+        }
+        
+        body.dark-mode .header-title,
+        body.dark-mode .sidebar-title,
+        body.dark-mode h1, 
+        body.dark-mode h2, 
+        body.dark-mode h3 {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .menu-toggle, 
+        body.dark-mode .dark-mode-toggle,
+        body.dark-mode .sidebar-close {
+            color: #b0b0b0;
+        }
+        
+        body.dark-mode .menu-toggle:hover, 
+        body.dark-mode .dark-mode-toggle:hover {
+            background-color: #2a2a2a;
+        }
+        
+        body.dark-mode .sidebar-link {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .sidebar-link:hover {
+            background-color: #2a2a2a;
+        }
+        
+        body.dark-mode .sidebar-link.active {
+            background-color: rgba(67, 97, 238, 0.3);
+        }
+        
+        body.dark-mode .history-item {
+            border-color: #333;
+        }
+        
+        body.dark-mode .history-item:hover {
+            background-color: #2a2a2a;
+        }
+        
+        body.dark-mode .history-details {
+            background-color: #2a2a2a;
+        }
+        
+        body.dark-mode .filter-select, 
+        body.dark-mode .filter-input {
+            background-color: #2a2a2a;
+            border-color: #444;
+            color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="menu-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h1 class="header-title">
+            <i class="fas fa-history"></i> User History
+        </h1>
+        <div class="header-actions">
+            <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+                <i class="fas fa-moon" id="darkModeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-title">Menu</h2>
+            <button class="sidebar-close" onclick="toggleSidebar()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="/" class="sidebar-link">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="/profile" class="sidebar-link">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="/data" class="sidebar-link">
+                    <i class="fas fa-database"></i> Data
+                </a>
+            </li>
+            <!-- Removed Settings menu item -->
+            <li class="sidebar-item">
+                <a href="/history" class="sidebar-link active">
+                    <i class="fas fa-history"></i> History
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <form action="/logout" method="get">
+                    <button type="submit" class="sidebar-link" style="background: none; border: none; width: 100%; text-align: left;">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <h1>Your Activity History</h1>
+            
+            <!-- Filters -->
+            <div class="history-filters">
+                <div class="filter-group">
+                    <label class="filter-label">Time Period:</label>
+                    <select id="timePeriod" class="filter-select">
+                        <option value="7">Last 7 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="90">Last 3 months</option>
+                        <option value="180">Last 6 months</option>
+                        <option value="365">Last year</option>
+                        <option value="0">All time</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Activity Type:</label>
+                    <select id="activityType" class="filter-select">
+                        <option value="">All activities</option>
+                        <option value="query">Queries</option>
+                        <option value="connection">Connections</option>
+                        <option value="export">Exports</option>
+                        <option value="error">Errors</option>
+                    </select>
+                </div>
+                
+                <button id="applyFilters" class="filter-button">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+            </div>
+            
+            <!-- History List -->
+            <ul id="historyList" class="history-list">
+                <!-- History items will be loaded here -->
+                <div class="empty-history">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Loading your history...</p>
+                </div>
+            </ul>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2023 DataViz Dashboard. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('sidebar-active');
+        }
+        
+        // Toggle dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            
+            // Update icon
+            const icon = document.getElementById('darkModeIcon');
+            if (isDarkMode) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('darkMode', 'false');
+            }
+        }
+        
+        // Initialize dark mode from localStorage
+        function initializeDarkMode() {
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                const icon = document.getElementById('darkModeIcon');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            }
+        }
+        
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Toggle history details
+        function toggleDetails(id) {
+            const details = document.getElementById(`details-${id}`);
+            const button = document.getElementById(`toggle-${id}`);
+            const icon = button.querySelector('i');
+            
+            if (details.style.display === 'block') {
+                details.style.display = 'none';
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                button.querySelector('span').textContent = 'Show Details';
+            } else {
+                details.style.display = 'block';
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                button.querySelector('span').textContent = 'Hide Details';
+            }
+        }
+        
+        // Load history data
+        async function loadHistory() {
+            const timePeriod = document.getElementById('timePeriod').value;
+            const activityType = document.getElementById('activityType').value;
+            
+            let url = '/api/history?';
+            if (timePeriod !== '0') {
+                url += `days=${timePeriod}&`;
+            }
+            if (activityType) {
+                url += `action_type=${activityType}`;
+            }
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch history');
+                }
+                
+                const data = await response.json();
+                const historyList = document.getElementById('historyList');
+                
+                // Clear current list
+                historyList.innerHTML = '';
+                
+                if (data.length === 0) {
+                    historyList.innerHTML = `
+                        <div class="empty-history">
+                            <i class="fas fa-history" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                            <p>No history found for the selected filters.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Add history items
+                data.forEach(item => {
+                    const details = item.details ? JSON.stringify(item.details, null, 2) : 'No details available';
+                    
+                    const li = document.createElement('li');
+                    li.className = 'history-item';
+                    li.innerHTML = `
+                        <div class="history-header">
+                            <span class="history-type ${item.action_type}">${item.action_type}</span>
+                            <span class="history-date">${formatDate(item.created_at)}</span>
+                        </div>
+                        <p class="history-description">${item.description}</p>
+                        <pre id="details-${item.id}" class="history-details">${details}</pre>
+                        <button id="toggle-${item.id}" class="history-toggle" onclick="toggleDetails(${item.id})">
+                            <i class="fas fa-chevron-down"></i>
+                            <span>Show Details</span>
+                        </button>
+                    `;
+                    
+                    historyList.appendChild(li);
+                });
+                
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('historyList').innerHTML = `
+                    <div class="empty-history">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem; color: var(--danger);"></i>
+                        <p>Failed to load history. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            
+            // Load history on page load
+            loadHistory();
+            
+            // Apply filters button
+            document.getElementById('applyFilters').addEventListener('click', loadHistory);
+            
+            // Sidebar theme toggle
+            document.getElementById('sidebarThemeToggle').addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleDarkMode();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #6b85f1;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #7209b7;
+            --border-radius: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: var(--dark);
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+        }
+        
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #4f46e5;
+        }
+        
+        .btn-info {
+            background-color: var(--accent);
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background-color: #56a0f7;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .success {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+        
+        .error {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+        
+        .loading {
+            background-color: rgba(114, 9, 183, 0.1);
+            color: var(--info);
+            border: 1px solid var(--info);
+        }
+        
+        .visible {
+            display: block;
+        }
+        
+        .db-type-fields {
+            display: none;
+        }
+        
+        .active {
+            display: block;
+        }
+        
+        .mt-3 {
+            margin-top: 1rem;
+        }
+        
+        .mt-4 {
+            margin-top: 1.5rem;
+        }
+        
+        .mb-3 {
+            margin-bottom: 1rem;
+        }
+        
+        /* Database explorer styles */
+        .database-list {
+            margin-top: 1rem;
+        }
+        
+        .database-item {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            margin-bottom: 0.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .database-item:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .database-item .name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .database-item .size {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .table-list {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        
+        .table-item {
+            padding: 0.75rem;
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            margin-bottom: 0.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-item:hover {
+            background-color: #dee2e6;
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+        
+        /* Header and Navigation Styles */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background-color: white;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .menu-toggle {
+            width: 50px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--dark);
+            cursor: pointer;
+        }
+        
+        
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background-color: var(--sidebar-bg, white);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            transition: left 0.3s ease;
+            z-index: 200;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color, #e9ecef);
+        }
+
+        .sidebar-title {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .sidebar-close {
+            width: 50px;
+            background: none;
+            border: none;
+            color: var(--text-color, #212529);
+            font-size: 1.25rem;
+            cursor: pointer;
+            display: block;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 1rem 0;
+            margin: 0;
+        }
+
+        .sidebar-item {
+            padding: 0.5rem 1.5rem;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-color, #212529);
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-link:hover, .sidebar-link.active {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+        }
+
+        .sidebar-link.active {
+            font-weight: 600;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            padding: 2rem;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-active {
+            margin-left: 280px;
+        }
+        @media (max-width: 768px) {
+            .main-content.sidebar-active {
+                margin-left: 0;
+            }
+        }
+        
+        /* Original styles */
+        .container {
+            
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1{
+            text-align: center;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: rgba(67, 97, 238, 0.1);;
+        }
+        .test-connection {
+            background-color: #337ab7;
+        }
+        .test-connection:hover {
+            background-color: #286090;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .visible {
+            display: block !important;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .loading {
+            background-color: #d9edf7;
+            color: #31708f;
+        }
+        .mongodb-fields, .mysql-fields, .postgresql-fields {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        
+        /* Database explorer styles */
+        .database-explorer {
+            margin-top: 30px;
+            display: none;
+        }
+        .database-list {
+            margin-top: 15px;
+        }
+        .database-item {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .database-item:hover {
+            background-color: #e9ecef;
+        }
+        .database-item .name {
+            font-weight: bold;
+        }
+        .database-item .size {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .table-list {
+            margin-left: 20px;
+            margin-top: 10px;
+            display: none;
+        }
+        .table-item {
+            padding: 8px;
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .table-item:hover {
+            background-color: #dee2e6;
+        }
+        .actions-bar {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            width: auto;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .btn-create {
+            background-color: #28a745;
+            width: auto;
+        }
+        .btn-create:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            width: auto;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 5px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        
+        /* Table data styles */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .data-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            margin: 0 5px;
+            width: auto;
+        }
+        
+        /* Column management */
+        .column-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .column-row .form-group {
+            margin-bottom: 0;
+            flex: 1;
+        }
+        .remove-column {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        .remove-column:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+      <button class="menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+      <h1 class="header-title">
+        <i class="fas fa-chart-line"></i> DataViz Dashboard
+      </h1>
+      <div class="header-actions">
+        
+      </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Menu</h2>
+        <button class="sidebar-close" onclick="toggleSidebar()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-item">
+          <a href="/" class="sidebar-link">
+            <i class="fas fa-home"></i> Dashboard
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="/profile" class="sidebar-link">
+            <i class="fas fa-user"></i> Profile
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="/data" class="sidebar-link active">
+            <i class="fas fa-database"></i> Data
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="/history" class="sidebar-link">
+            <i class="fas fa-history"></i> History
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="/logout" class="sidebar-link">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <h1>Connect with your server</h1>
+            <form id="connectionForm">
+                <div class="form-group">
+                    <label for="dbType">Database Type:</label>
+                    <select id="dbType" name="dbType" required>
+                        <option value="">-- Select Database --</option>
+                        <option value="postgresql">PostgreSQL</option>
+                        <option value="mysql">MySQL</option>
+                        
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="host">Host:</label>
+                    <input type="text" id="host" name="host" placeholder="localhost" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="port">Port:</label>
+                    <input type="text" id="port" name="port" placeholder="5432" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" placeholder="postgres">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password">
+                </div>
+
+                <!-- PostgreSQL Specific Fields -->
+                <div class="postgresql-fields">
+                    <!-- Removed database name input as per user request -->
+                </div>
+
+                <!-- MySQL Specific Fields -->
+                <div class="mysql-fields">
+                    <!-- Removed database name input as per user request -->
+                </div>
+
+                <!-- MongoDB Specific Fields -->
+                <div class="mongodb-fields">
+                    <div class="form-group">
+                        <!-- Removed database name input as per user request -->
+                    </div>
+                    <div class="form-group">
+                        <label for="authSource">Authentication Database (optional):</label>
+                        <input type="text" id="authSource" name="authSource" placeholder="admin">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button type="button" id="testConnection" class="test-connection">Test Connection</button>
+                    <button type="button" id="saveConnection" class="save-connection">Save Connection</button>
+                </div>
+            </form>
+            
+            <div id="status"></div>
+            
+            <!-- Database Explorer Section -->
+            <div id="databaseExplorer" class="database-explorer">
+                <h2>Database Explorer</h2>
+                
+                <div class="actions-bar">
+                    <button id="refreshDatabases" class="btn-secondary">Refresh Databases</button>
+                    <!-- Removed Create Database button as per user request -->
+                </div>
+                
+                <div class="database-list" id="databaseList">
+                    <!-- Database items will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Create Database Modal -->
+    <div id="createDatabaseModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create New Database</h2>
+            <form id="createDatabaseForm">
+                <div class="form-group">
+                    <label for="newDatabaseName">Database Name:</label>
+                    <input type="text" id="newDatabaseName" name="name" required>
+                </div>
+                <button type="submit">Create Database</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Create Table Modal -->
+    <div id="createTableModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create New Table</h2>
+            <form id="createTableForm">
+                <div class="form-group">
+                    <label for="newTableName">Table Name:</label>
+                    <input type="text" id="newTableName" name="name" required>
+                </div>
+                
+                <h3>Columns</h3>
+                <div id="columnsContainer">
+                    <div class="column-row">
+                        <div class="form-group">
+                            <label>Column Name:</label>
+                            <input type="text" name="columnName[]" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data Type:</label>
+                            <select name="columnType[]" required>
+                                <option value="INTEGER">INTEGER</option>
+                                <option value="TEXT">TEXT</option>
+                                <option value="VARCHAR(255)">VARCHAR(255)</option>
+                                <option value="BOOLEAN">BOOLEAN</option>
+                                <option value="DATE">DATE</option>
+                                <option value="TIMESTAMP">TIMESTAMP</option>
+                                <option value="NUMERIC">NUMERIC</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Primary Key:</label>
+                            <input type="checkbox" name="primaryKey[]">
+                        </div>
+                        <div class="form-group">
+                            <label>Nullable:</label>
+                            <input type="checkbox" name="nullable[]" checked>
+                        </div>
+                        <button type="button" class="remove-column" style="visibility: hidden;">✕</button>
+                    </div>
+                </div>
+                
+                <button type="button" id="addColumn" class="btn-secondary">Add Column</button>
+                <button type="submit">Create Table</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Table Data Modal -->
+    <div id="tableDataModal" class="modal">
+        <div class="modal-content" style="width: 90%; max-width: 1200px;">
+            <span class="close">&times;</span>
+            <h2 id="tableDataTitle">Table Data</h2>
+            
+            <div class="actions-bar">
+                <button id="refreshData" class="btn-secondary">Refresh</button>
+                <button id="addRow" class="btn-create">Add Row</button>
+                <button id="exportData" class="btn-secondary">Export CSV</button>
+            </div>
+            
+            <div id="tableDataContainer" style="max-height: 500px; overflow: auto;">
+                <!-- Table data will be displayed here -->
+            </div>
+            
+            <div class="pagination" id="dataPagination">
+                <button id="prevPage" class="btn-secondary">Previous</button>
+                <span id="pageInfo">Page 1</span>
+                <button id="nextPage" class="btn-secondary">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store connection details and state
+        let currentConnection = null;
+        let currentDatabase = null;
+        let currentTable = null;
+        let currentPage = 1;
+        let pageSize = 100;
+        
+        // DOM Elements
+        document.getElementById('dbType').addEventListener('change', updateFormFields);
+        document.getElementById('testConnection').addEventListener('click', testConnection);
+        document.getElementById('saveConnection').addEventListener('click', saveConnection);
+        
+        // Database explorer elements
+        const databaseExplorer = document.getElementById('databaseExplorer');
+        const databaseList = document.getElementById('databaseList');
+        const refreshDatabasesBtn = document.getElementById('refreshDatabases');
+        const createDatabaseBtn = document.getElementById('createDatabase');
+        
+        // Modal elements
+        const createDatabaseModal = document.getElementById('createDatabaseModal');
+        const createTableModal = document.getElementById('createTableModal');
+        const tableDataModal = document.getElementById('tableDataModal');
+        const closeButtons = document.querySelectorAll('.close');
+        
+        // Event listeners for database management
+        refreshDatabasesBtn.addEventListener('click', refreshDatabases);
+        createDatabaseBtn.addEventListener('click', () => createDatabaseModal.style.display = 'block');
+        document.getElementById('createDatabaseForm').addEventListener('submit', createDatabase);
+        document.getElementById('createTableForm').addEventListener('submit', createTable);
+        document.getElementById('addColumn').addEventListener('click', addColumnRow);
+        
+        // Table data modal buttons
+        document.getElementById('refreshData').addEventListener('click', refreshTableData);
+        document.getElementById('addRow').addEventListener('click', showAddRowForm);
+        document.getElementById('exportData').addEventListener('click', exportTableData);
+        document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+        document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+        
+        // Close modals when clicking the X
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.modal').style.display = 'none';
+            });
+        });
+        
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('sidebar-active');
+        }
+
+        // Initialize sidebar on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if sidebar should be open by default on larger screens
+            if (window.innerWidth > 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const mainContent = document.querySelector('.main-content');
+                sidebar.classList.add('active');
+                mainContent.classList.add('sidebar-active');
+            }
+        });
+
+        // Toggle dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.getElementById('darkModeIcon');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('darkMode', 'enabled');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('darkMode', 'disabled');
+            }
+        }
+
+        // Check for saved dark mode preference
+        function initializeDarkMode() {
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.body.classList.add('dark-mode');
+                const icon = document.getElementById('darkModeIcon');
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            }
+        }
+
+        // Initialize dark mode on page load
+        window.addEventListener('DOMContentLoaded', initializeDarkMode);
+
+        function updateFormFields() {
+            const dbType = document.getElementById('dbType').value;
+            
+            // Hide all specific fields
+            document.querySelectorAll('.mongodb-fields, .mysql-fields, .postgresql-fields')
+                .forEach(el => el.classList.remove('active'));
+            
+            // Show fields for selected database type
+            if (dbType) {
+                document.querySelector(`.${dbType}-fields`).classList.add('active');
+                
+                // Set default ports
+                const portField = document.getElementById('port');
+                if (dbType === 'postgresql') portField.value = '5432';
+                else if (dbType === 'mysql') portField.value = '3306';
+                else if (dbType === 'mongodb') portField.value = '27017';
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = type;
+            statusElement.classList.add('visible');
+        }
+
+        function hideStatus() {
+            const statusElement = document.getElementById('status');
+            statusElement.classList.remove('visible');
+        }
+
+        function getConnectionDetails() {
+            const dbType = document.getElementById('dbType').value;
+            const commonFields = {
+                dbType,
+                host: document.getElementById('host').value,
+                port: document.getElementById('port').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            if (dbType === 'postgresql' || dbType === 'mysql') {
+                // Check if database input exists before accessing value
+                const dbInput = document.getElementById(`${dbType}-database`);
+                return {
+                    ...commonFields,
+                    database: dbInput ? dbInput.value : ''
+                };
+            } else if (dbType === 'mongodb') {
+                const mongoDbInput = document.getElementById('mongodb-database');
+                return {
+                    ...commonFields,
+                    database: mongoDbInput ? mongoDbInput.value : '',
+                    authSource: document.getElementById('authSource').value || 'admin'
+                };
+            }
+            
+            return commonFields;
+        }
+
+        async function testConnection() {
+            const connectionDetails = getConnectionDetails();
+            
+            if (!connectionDetails.dbType) {
+                showStatus('Please select a database type', 'error');
+                return;
+            }
+
+            console.log('Testing connection...', connectionDetails);
+            showStatus('Testing connection...', 'loading');
+
+            try {
+                const response = await fetch('/api/test-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(connectionDetails)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showStatus('✓ Connection successful!', 'success');
+                    currentConnection = connectionDetails;
+                    
+                    // Store the connection in localStorage for use in visualization page
+                    localStorage.setItem('currentConnection', JSON.stringify(connectionDetails));
+                    
+                    // Show database explorer and display databases
+                    databaseExplorer.style.display = 'block';
+                    
+                    // Display the databases that were returned with the test connection
+                    if (data.databases && data.databases.length > 0) {
+                        displayDatabases(data.databases);
+                    } else {
+                        // If no databases were returned, try to fetch them
+                        refreshDatabases();
+                    }
+                } else {
+                    const errorMessage = data.message || `Server responded with status ${response.status}`;
+                    showStatus('✗ Connection failed: ' + errorMessage, 'error');
+                    console.error('Connection failed:', data);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to connect to server'), 'error');
+            }
+        }
+
+        async function saveConnection() {
+            const connectionDetails = getConnectionDetails();
+            
+            if (!connectionDetails.dbType) {
+                showStatus('Please select a database type', 'error');
+                return;
+            }
+
+            showStatus('Saving connection...', 'loading');
+            
+            const apiBaseUrl = 'https://05znwjn3jo3e2x-8000.proxy.runpod.net/api';
+
+            try {
+                // First test the connection to make sure it works
+                const testResponse = await fetch(`${apiBaseUrl}/test-connection`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(connectionDetails)
+                });
+
+                if (!testResponse.ok) {
+                    throw new Error(`Server responded with status ${testResponse.status}`);
+                }
+
+                const testData = await testResponse.json();
+
+                if (!testData.success) {
+                    throw new Error(testData.message || 'Connection test failed');
+                }
+
+                // Connection test successful, now save the connection
+            const saveResponse = await fetch(`${apiBaseUrl}/create-connection`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(connectionDetails)
+            });
+
+                if (!saveResponse.ok) {
+                    throw new Error(`Server responded with status ${saveResponse.status}`);
+                }
+
+                const saveData = await saveResponse.json();
+
+                if (!saveData.success) {
+                    throw new Error(saveData.message || 'Failed to save connection');
+                }
+
+                // Store connection in localStorage
+                localStorage.setItem('currentConnection', JSON.stringify(connectionDetails));
+
+                // Now fetch the databases for this connection
+            const dbResponse = await fetch(`${apiBaseUrl}/databases`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(connectionDetails)
+            });
+
+                if (!dbResponse.ok) {
+                    throw new Error(`Server responded with status ${dbResponse.status}`);
+                }
+
+                const dbData = await dbResponse.json();
+
+                if (dbData.success) {
+                    // Store the databases in localStorage
+                    if (dbData.databases && dbData.databases.length > 0) {
+                        localStorage.setItem('availableDatabases', JSON.stringify(dbData.databases));
+                        
+                        // If there's at least one database, select the first one
+                        if (dbData.databases.length > 0) {
+                            const firstDb = dbData.databases[0].name;
+                            const connectionWithDB = {...connectionDetails, database: firstDb};
+                            localStorage.setItem('selectedDatabase', JSON.stringify(connectionWithDB));
+                        }
+                    }
+                    
+                    // Set a flag to indicate we need to refresh the database list
+                    localStorage.setItem('refreshDatabaseList', 'true');
+                    
+                    showStatus('✓ Connection saved successfully!', 'success');
+                    
+                    // Redirect to the dashboard page
+                    window.location.href = '/';
+                } else {
+                    showStatus('✗ Connection saved but failed to fetch databases: ' + (dbData.message || 'Unknown error'), 'warning');
+                    
+                    // Still set the refresh flag and redirect
+                    localStorage.setItem('refreshDatabaseList', 'true');
+                    
+                    // Still redirect to dashboard after a delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+
+        function testEchoEndpoint() {
+            console.log('Testing echo endpoint...');
+            
+            // Make sure this URL points to your server
+            fetch('https://05znwjn3jo3e2x-8000.proxy.runpod.net/api/echo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ test: 'data' })
+            })
+            .then(response => {
+                console.log('Echo response status:', response.status);
+                return response.text();
+            })
+            .then(text => {
+                console.log('Echo response:', text);
+            })
+            .catch(error => {
+                console.error('Echo error:', error);
+            });
+        }
+
+        window.addEventListener('load', testEchoEndpoint);
+
+        function refreshDatabases() {
+            if (!currentConnection) {
+                showStatus('No active connection. Please test a connection first.', 'error');
+                return;
+            }
+
+            showStatus('Refreshing databases...', 'loading');
+
+            fetch('/api/databases', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(currentConnection)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showStatus('✓ Databases refreshed successfully!', 'success');
+                    displayDatabases(data.databases);
+                } else {
+                    showStatus('✗ Failed to refresh databases: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to refresh databases'), 'error');
+            });
+        }
+
+        function displayDatabases(databases) {
+            databaseList.innerHTML = '';
+            databases.forEach(dbName => {
+                const dbItem = document.createElement('div');
+                dbItem.className = 'database-item';
+                dbItem.innerHTML = `
+                    <div class="name">${dbName}</div>
+                    <div class="size"></div>
+                `;
+                dbItem.addEventListener('click', () => selectDatabase(dbName));
+                databaseList.appendChild(dbItem);
+            });
+        }
+
+        function formatSize(bytes) {
+            if (bytes === undefined || bytes === null) return '';
+            
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            if (bytes === 0) return '0 Byte';
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+        }
+
+        function selectDatabase(dbName) {
+            currentDatabase = dbName;
+            showStatus(`Selected database: ${dbName}`, 'success');
+            
+            // Store the selected database in localStorage
+            const connectionWithDB = {...currentConnection, database: dbName};
+            localStorage.setItem('selectedDatabase', JSON.stringify(connectionWithDB));
+            
+            // Add a button to use this database for visualization
+            const useForVisualizationBtn = document.createElement('button');
+            useForVisualizationBtn.className = 'btn-primary';
+            useForVisualizationBtn.innerHTML = '<i class="fas fa-chart-bar"></i> Use for Visualization';
+            useForVisualizationBtn.onclick = () => {
+                window.location.href = '/index.html';
+            };
+            
+            // Check if button already exists
+            const existingBtn = document.querySelector('.use-for-viz-btn');
+            if (existingBtn) {
+                existingBtn.remove();
+            }
+            
+            // Add the button near the status area
+            const statusArea = document.getElementById('status');
+            useForVisualizationBtn.classList.add('use-for-viz-btn');
+            statusArea.appendChild(useForVisualizationBtn);
+            
+            // Clear any previously displayed tables
+            const tableList = document.createElement('div');
+            tableList.className = 'table-list';
+            tableList.id = 'tableList';
+            
+            // Find the database item that was clicked
+            const dbItems = document.querySelectorAll('.database-item');
+            let selectedDbItem;
+            dbItems.forEach(item => {
+                if (item.querySelector('.name').textContent === dbName) {
+                    selectedDbItem = item;
+                }
+            });
+            
+            // Check if this database already has tables displayed
+            const existingTableList = selectedDbItem.nextElementSibling;
+            if (existingTableList && existingTableList.classList.contains('table-list')) {
+                // Toggle visibility of existing table list
+                if (existingTableList.style.display === 'none') {
+                    existingTableList.style.display = 'block';
+                } else {
+                    existingTableList.style.display = 'none';
+                }
+                return;
+            }
+            
+            // Show loading indicator
+            tableList.innerHTML = '<div class="loading">Loading tables...</div>';
+            selectedDbItem.after(tableList);
+            
+            // Fetch tables for the selected database
+            fetchTables(dbName);
+        }
+
+        function fetchTables(dbName) {
+            if (!currentConnection) {
+                showStatus('No active connection. Please test a connection first.', 'error');
+                return;
+            }
+
+            showStatus(`Fetching tables for ${dbName}...`, 'loading');
+
+            fetch('/api/tables', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...currentConnection,
+                    database: dbName
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showStatus(`✓ Tables fetched successfully!`, 'success');
+                    displayTables(data.tables);
+                } else {
+                    showStatus(`✗ Failed to fetch tables: ${data.message || 'Unknown error'}`, 'error');
+                    // Remove the loading indicator
+                    const tableList = document.getElementById('tableList');
+                    if (tableList) {
+                        tableList.innerHTML = '<div class="error">Failed to load tables</div>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus(`✗ Error: ${error.message || 'Failed to fetch tables'}`, 'error');
+                // Remove the loading indicator
+                const tableList = document.getElementById('tableList');
+                if (tableList) {
+                    tableList.innerHTML = '<div class="error">Failed to load tables</div>';
+                }
+            });
+        }
+
+        function displayTables(tables) {
+            const tableList = document.getElementById('tableList');
+            
+            if (!tableList) {
+                console.error('Table list element not found');
+                return;
+            }
+            
+            if (!tables || tables.length === 0) {
+                tableList.innerHTML = '<div class="empty-message">No tables found in this database</div>';
+                return;
+            }
+            
+            tableList.innerHTML = '';
+            
+            tables.forEach(tableName => {
+                const tableItem = document.createElement('div');
+                tableItem.className = 'table-item';
+                tableItem.innerHTML = `
+                    <span class="table-name">${tableName}</span>
+                    <div class="table-actions">
+                        <button class="btn-view-data" title="View Data">
+                            <i class="fas fa-table"></i>
+                        </button>
+                        <button class="btn-structure" title="View Structure">
+                            <i class="fas fa-project-diagram"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Add event listener to view table data
+                tableItem.querySelector('.btn-view-data').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    viewTableData(tableName);
+                });
+                
+                // Add event listener to view table structure
+                tableItem.querySelector('.btn-structure').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    viewTableStructure(tableName);
+                });
+                
+                // Add event listener to view table data when clicking on the table name
+                tableItem.querySelector('.table-name').addEventListener('click', () => {
+                    viewTableData(tableName);
+                });
+                
+                tableList.appendChild(tableItem);
+            });
+            
+            // Show the table list
+            tableList.style.display = 'block';
+        }
+
+        function viewTableData(tableName) {
+            if (!currentConnection || !currentDatabase) {
+                showStatus('No active database selected. Please select a database first.', 'error');
+                return;
+            }
+            
+            currentTable = tableName;
+            showStatus(`Loading data from ${tableName}...`, 'loading');
+            
+            // Show the table data modal
+            tableDataModal.style.display = 'block';
+            document.getElementById('tableDataTitle').textContent = `${currentDatabase}.${tableName}`;
+            
+            // Ensure close button works
+            tableDataModal.querySelector('.close').addEventListener('click', function() {
+                tableDataModal.style.display = 'none';
+            });
+            
+            // Clear previous data
+            const tableDataContainer = document.getElementById('tableDataContainer');
+            tableDataContainer.innerHTML = '<div class="loading">Loading data...</div>';
+            
+            // Reset pagination
+            currentPage = 1;
+            
+            // Fetch table data
+            fetchTableData();
+        }
+
+        function fetchTableData() {
+            if (!currentConnection || !currentDatabase || !currentTable) {
+                showStatus('No active table selected. Please select a table first.', 'error');
+                return;
+            }
+
+            const tableDataContainer = document.getElementById('tableDataContainer');
+            tableDataContainer.innerHTML = '<div class="loading">Loading data...</div>';
+
+            // Debug connection details (without sensitive info)
+            const debugConnection = {...currentConnection};
+            if (debugConnection.password) debugConnection.password = '****';
+            console.log('Connection details:', debugConnection);
+            console.log('Database:', currentDatabase);
+            console.log('Table:', currentTable);
+
+            fetch('/api/table-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...currentConnection,
+                    database: currentDatabase,
+                    table: currentTable,
+                    page: currentPage,
+                    pageSize: pageSize
+                })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Error response:', text);
+                        throw new Error(`Server responded with status ${response.status}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+                if (data.success) {
+                    showStatus('✓ Table data fetched successfully!', 'success');
+                    displayTableData(data.data, data.totalRows, data.page, data.totalPages);
+                } else {
+                    showStatus('✗ Failed to fetch table data: ' + (data.message || 'Unknown error'), 'error');
+                    tableDataContainer.innerHTML = '<div class="error">Failed to load table data: ' + (data.message || 'Unknown error') + '</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to fetch table data'), 'error');
+                tableDataContainer.innerHTML = '<div class="error">Failed to load table data: ' + (error.message || 'Connection error') + '</div>';
+            });
+        }
+
+        function displayTableData(data, totalRows, currentPage, totalPages) {
+            const tableDataContainer = document.getElementById('tableDataContainer');
+            
+            if (!tableDataContainer) {
+                console.error('Table data container element not found');
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                tableDataContainer.innerHTML = '<div class="empty-message">No data found in this table</div>';
+                return;
+            }
+            
+            // Create table element
+            const table = document.createElement('table');
+            table.className = 'data-table';
+            
+            // Create table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            // Get column names from the first row
+            const columns = Object.keys(data[0]);
+            
+            columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create table body
+            const tbody = document.createElement('tbody');
+            
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                columns.forEach(column => {
+                    const td = document.createElement('td');
+                    
+                    // Format the cell value based on its type
+                    const value = row[column];
+                    if (value === null || value === undefined) {
+                        td.innerHTML = '<span class="null-value">NULL</span>';
+                    } else if (typeof value === 'object') {
+                        td.textContent = JSON.stringify(value);
+                    } else {
+                        td.textContent = value.toString();
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            table.appendChild(tbody);
+            
+            // Clear the container and add the table
+            tableDataContainer.innerHTML = '';
+            tableDataContainer.appendChild(table);
+            
+            // Check if pagination elements exist before updating them
+            const paginationInfo = document.getElementById('paginationInfo');
+            if (paginationInfo) {
+                paginationInfo.textContent = `Showing page ${currentPage} of ${totalPages} (${totalRows} total rows)`;
+            } else {
+                console.warn('Pagination info element not found');
+                // Create pagination info element if it doesn't exist
+                const paginationDiv = document.createElement('div');
+                paginationDiv.className = 'pagination-info';
+                paginationDiv.id = 'paginationInfo';
+                paginationDiv.textContent = `Showing page ${currentPage} of ${totalPages} (${totalRows} total rows)`;
+                tableDataContainer.appendChild(paginationDiv);
+            }
+            
+            // Check if pagination buttons exist before updating them
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+            
+            if (prevPageBtn && nextPageBtn) {
+                prevPageBtn.disabled = currentPage <= 1;
+                nextPageBtn.disabled = currentPage >= totalPages;
+            } else {
+                console.warn('Pagination buttons not found');
+                // Create pagination controls if they don't exist
+                const paginationControls = document.createElement('div');
+                paginationControls.className = 'pagination-controls';
+                paginationControls.innerHTML = `
+                    <button id="prevPage" ${currentPage <= 1 ? 'disabled' : ''}>Previous</button>
+                    <button id="nextPage" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                `;
+                tableDataContainer.appendChild(paginationControls);
+                
+                // Add event listeners to the new buttons
+                document.getElementById('prevPage').addEventListener('click', () => changePage(-1));
+                document.getElementById('nextPage').addEventListener('click', () => changePage(1));
+            }
+        }
+
+        function viewTableStructure(tableName) {
+            // This function would fetch and display the table structure
+            // For now, we'll just show a message
+            alert(`View structure for table ${tableName} is not implemented yet.`);
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            fetchTableData();
+        }
+
+        function addColumnRow() {
+            const columnsContainer = document.getElementById('columnsContainer');
+            const newColumnRow = document.createElement('div');
+            newColumnRow.className = 'column-row';
+            newColumnRow.innerHTML = `
+                <div class="form-group">
+                    <label>Column Name:</label>
+                    <input type="text" name="columnName[]" required>
+                </div>
+                <div class="form-group">
+                    <label>Data Type:</label>
+                    <select name="columnType[]" required>
+                        <option value="INTEGER">INTEGER</option>
+                        <option value="TEXT">TEXT</option>
+                        <option value="VARCHAR(255)">VARCHAR(255)</option>
+                        <option value="BOOLEAN">BOOLEAN</option>
+                        <option value="DATE">DATE</option>
+                        <option value="TIMESTAMP">TIMESTAMP</option>
+                        <option value="NUMERIC">NUMERIC</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Primary Key:</label>
+                    <input type="checkbox" name="primaryKey[]">
+                </div>
+                <div class="form-group">
+                    <label>Nullable:</label>
+                    <input type="checkbox" name="nullable[]" checked>
+                </div>
+                <button type="button" class="remove-column">✕</button>
+            `;
+            columnsContainer.appendChild(newColumnRow);
+            const removeButtons = document.querySelectorAll('.remove-column');
+            removeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.closest('.column-row').remove();
+                });
+            });
+        }
+
+        function createTable(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const tableDetails = {
+                database: currentDatabase,
+                table: formData.get('name'),
+                columns: []
+            };
+
+            const columnNames = formData.getAll('columnName[]');
+            const columnTypes = formData.getAll('columnType[]');
+            const primaryKeys = formData.getAll('primaryKey[]');
+            const nullables = formData.getAll('nullable[]');
+
+            for (let i = 0; i < columnNames.length; i++) {
+                tableDetails.columns.push({
+                    name: columnNames[i],
+                    type: columnTypes[i],
+                    primaryKey: primaryKeys.includes(columnNames[i]),
+                    nullable: !nullables.includes(columnNames[i])
+                });
+            }
+
+            showStatus('Creating table...', 'loading');
+
+            fetch('/api/create-table', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...currentConnection,
+                    ...tableDetails
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showStatus('✓ Table created successfully!', 'success');
+                    createTableModal.style.display = 'none';
+                    fetchTables();
+                } else {
+                    showStatus('✗ Failed to create table: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to create table'), 'error');
+            });
+        }
+
+        function createDatabase(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const dbName = formData.get('name');
+
+            showStatus('Creating database...', 'loading');
+
+            fetch('/api/create-database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...currentConnection,
+                    database: dbName
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showStatus('✓ Database created successfully!', 'success');
+                    createDatabaseModal.style.display = 'none';
+                    refreshDatabases();
+                } else {
+                    showStatus('✗ Failed to create database: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to create database'), 'error');
+            });
+        }
+
+        function showAddRowForm() {
+            const tableDataContainer = document.getElementById('tableDataContainer');
+            const addRowForm = document.createElement('form');
+            addRowForm.className = 'add-row-form';
+            addRowForm.innerHTML = `
+                <h3>Add New Row</h3>
+                <button type="button" id="cancelAddRow" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-create">Add Row</button>
+            `;
+            const tableHeaders = document.querySelectorAll('.data-table th');
+            tableHeaders.forEach(header => {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = header.textContent;
+                input.placeholder = header.textContent;
+                addRowForm.insertBefore(input, addRowForm.querySelector('button'));
+            });
+            tableDataContainer.appendChild(addRowForm);
+
+            document.getElementById('cancelAddRow').addEventListener('click', () => {
+                tableDataContainer.removeChild(addRowForm);
+            });
+
+            addRowForm.addEventListener('submit', addRow);
+        }
+
+        function addRow(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const newRow = Object.fromEntries(formData.entries());
+
+            showStatus('Adding new row...', 'loading');
+
+            fetch('/api/add-row', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...currentConnection,
+                    database: currentDatabase,
+                    table: currentTable,
+                    row: newRow
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showStatus('✓ Row added successfully!', 'success');
+                    fetchTableData();
+                } else {
+                    showStatus('✗ Failed to add row: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to add row'), 'error');
+            });
+        }
+
+        function exportTableData() {
+            if (!currentConnection || !currentDatabase || !currentTable) {
+                showStatus('No active table selected. Please select a table first.', 'error');
+                return;
+            }
+
+            showStatus('Exporting table data...', 'loading');
+
+            fetch('/api/export-table-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...currentConnection,
+                    database: currentDatabase,
+                    table: currentTable
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentTable}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showStatus('✓ Table data exported successfully!', 'success');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus('✗ Error: ' + (error.message || 'Failed to export table data'), 'error');
+            });
+        }
+    </script>
+</body>
+</html>

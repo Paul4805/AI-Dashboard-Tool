@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic
+typing-extensions
+huggingface-hub
+openai
+python-multipart
+jinja2
+passlib
+bcrypt==3.2.0
+git+https://github.com/openai/whisper.git  # replaces openai-whisper & whisper
+mysql-connector-python                    # replaces mysql.conector & mysql
+psycopg2-binary
+pymongo
