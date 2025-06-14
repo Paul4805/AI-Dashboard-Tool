@@ -589,11 +589,6 @@
                             <span class="history-date">${formatDate(item.created_at)}</span>
                         </div>
                         <p class="history-description">${item.description}</p>
-                        <pre id="details-${item.id}" class="history-details">${details}</pre>
-                        <button id="toggle-${item.id}" class="history-toggle" onclick="toggleDetails(${item.id})">
-                            <i class="fas fa-chevron-down"></i>
-                            <span>Show Details</span>
-                        </button>
                     `;
                     
                     historyList.appendChild(li);

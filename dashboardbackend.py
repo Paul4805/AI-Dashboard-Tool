@@ -459,7 +459,8 @@ def clean_sql(raw_sql: str, as_single_line: bool = False) -> str:
     return cleaned_sql
 
 
-def generate_sql_english(user_prompt, schema_description):
+def generate_sql_english(user_prompt, schema_description, database_type):
+    print(database_type)
     """
     Converts natural language questions to raw SQL queries using LLM via RunPod.
     
@@ -471,15 +472,22 @@ def generate_sql_english(user_prompt, schema_description):
         str: Cleaned raw SQL query string (no explanation, no formatting).
     """
     # Construct a strict prompt
-    prompt = f"""You are an AI that outputs only SQL queries.
+    prompt = f"""
+You are a professional AI SQL assistant.
 
-Given the following database schema:
+Your job is to generate a syntactically correct SQL query for a {database_type} database,
+given the schema and user question.
+
+### SCHEMA ###
 {schema_description}
 
-Translate the following question into a syntactically correct SQL query.
-IMPORTANT: Return ONLY the SQL query. Do NOT include comments, explanations, markdown, any formatting or the msg "Here's the SQL query to retrieve......" .
+### INSTRUCTIONS ###
+- Generate ONLY the SQL query.
+- DO NOT include explanations, comments, markdown formatting, or any intro like "Here's your query".
+- Ensure the SQL follows {database_type} syntax precisely, go with query which you think will definitely work.
+- If filters, conditions, or joins are needed, infer them from the schema and question.
 
-Question:
+### QUESTION ###
 {user_prompt}
 """
 
@@ -518,11 +526,13 @@ def detect_chart_type(prompt: str) -> str:
         "Line Graph": r"\bline[\s-]?(graph|chart)\b",
         "Pie Chart": r"\bpie[\s-]?chart\b",
         "Scatter Plot": r"\bscatter[\s-]?plot\b",
-        "AI Report": r"\b(ai[\s-]?analysis|machine learning|ai[\s-]?insight|intelligent summary)\b"
+        "AI Report": r"\b(ai[\s-]?(analysis|report|insight)|machine learning|intelligent summary|ai[\s-]?generated[\s-]?(report|analysis))\b"
+
     }
 
     matches = [label for label, pattern in chart_patterns.items()
                if re.search(pattern, prompt, re.IGNORECASE)]
+    print(f"Detected matches: {matches}")  # Debugging output
 
     if len(matches) == 0:
         raise ValueError("No known chart or analysis type found in the prompt.")
@@ -543,23 +553,23 @@ def generate_analysis(user_prompt, results):
         str: Detailed analysis of the data
     """
     # Construct the analysis prompt
-    prompt = f"""You are a senior data analyst. Provide a comprehensive analysis of these results.
-    
+    prompt = prompt = f"""
 **User Question**: {user_prompt}
 
 **Data Results**:
 {str(results)}
 
-Include in your response:
-1. Key findings and patterns
-2. Notable outliers or anomalies  
-3. Business implications
-4. Recommendations for next steps
-5. Limitations of the data
+Please write a concise analysis **within 250 words** or ** if user specified words give according to that ** , using **clear line breaks** and **section headings**. Format strictly like this:
 
-Format your response with clear section headings.
+Key Findings:\n- ...
+Outliers:\n- ...
+Implications:\n- ...
+Recommendations:\n- ...
+Limitations:\n- ...
 
-please give the output in the language of the userprompt"""
+Use bullet points and line breaks (\\n) between each section. Reply in the same language as the user's question.
+"""
+
     
     # Call the RunPod API
     response = client.chat.completions.create(
@@ -569,8 +579,9 @@ please give the output in the language of the userprompt"""
             "content": f"""{prompt}"""
         }]
     )
-    return response.choices[0].message.content.strip()
+    output = response.choices[0].message.content.strip().replace('\n', '<br>')
 
+    return output
 
 def generate_visualization(user_prompt, results, chart_format):
     """
@@ -616,36 +627,6 @@ please use chart labels in the language of the userprompt"""
     )
     return response.choices[0].message.content.strip()
 
-
-
-def generate(user_query: UserQuery):
-    schema = get_schema_description_english()
-    print(f"Schema for English: {schema}")  # Debugging output
-    print(f"User Query: {user_query.question}")  # Debugging output
-    format_type = detect_chart_type(user_query.question)
-    try:
-        sql = generate_sql_english(user_query.question, schema)
-        #if sql.startswith(""):
-        conn = sqlite3.connect("example_english.db")
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        conn.close()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"SQL Error: {e}")
-    try:
-        if format_type == "ai report":
-            analysis = generate_analysis(user_query.question, results)
-            return {"type": "report", "analysis": analysis}
-        else:
-            chart_str = generate_visualization(user_query.question, results, format_type)
-            # Attempt to parse valid JSON from LLM output
-            chart_json = json.loads(chart_str.strip().strip("```json").strip("```").strip())
-            return {"type": "chart", "data": chart_json}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing Error: {e}")
-def get_user_id(user: dict = Depends(get_current_user)):
-    return user["id"]
 
 @app.post("/ask")
 async def ask_question(request: Request):
@@ -789,7 +770,7 @@ async def ask_question(request: Request):
         print(f"Schema description: {schema_description}")
         
         # Generate SQL query from the question
-        sql_query = generate_sql_english(question, schema_description)
+        sql_query = generate_sql_english(question, schema_description, db_type)
         print(f"Generated SQL query: {sql_query}")
         
         # Execute the query
@@ -808,7 +789,7 @@ async def ask_question(request: Request):
                 results.append(doc)
         
         # Generate visualization or report
-        if format_type == "ai report":
+        if format_type == "AI Report":
             analysis = generate_analysis(question, results)
             return {
                 "type": "report",
