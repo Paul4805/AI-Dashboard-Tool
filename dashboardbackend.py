@@ -526,7 +526,7 @@ def detect_chart_type(prompt: str) -> str:
         "Line Graph": r"\bline[\s-]?(graph|chart)\b",
         "Pie Chart": r"\bpie[\s-]?chart\b",
         "Scatter Plot": r"\bscatter[\s-]?plot\b",
-        "AI Report": r"\b(ai[\s-]?(analysis|report|insight)|machine learning|intelligent summary|ai[\s-]?generated[\s-]?(report|analysis))\b"
+        "AI Report": r"\b(ai[\s-]?(analysis|report|insight)|machine learning|intelligent summary|ai[\s-]?generated[\s-]?(report|analysis)|report)\b"
 
     }
 
